@@ -9,8 +9,8 @@ go_library(
     importpath = "example.com/gazelle-foreign-cc/gazelle", # Shared import path for this package's files
     visibility = ["//language:__pkg__"],
     deps = [
-        "@com_github_bazelbuild_bazel_gazelle//config",
-        "@com_github_bazelbuild_bazel_gazelle//rule",
+        "@gazelle//config",
+        "@gazelle//rule",
     ],
 )
 
@@ -26,16 +26,20 @@ go_library(
     deps = [
         ":config_lib", # Depends on the local config_lib
         "//language",
-        "@com_github_bazelbuild_bazel_gazelle//config",
-        "@com_github_bazelbuild_bazel_gazelle//language",
-        "@com_github_bazelbuild_bazel_gazelle//repo",
-        "@com_github_bazelbuild_bazel_gazelle//resolve",
-        "@com_github_bazelbuild_bazel_gazelle//rule",
+        "@gazelle//config",
+        "@gazelle//label",
+        "@gazelle//language",
+        "@gazelle//repo",
+        "@gazelle//resolve",
+        "@gazelle//rule",
     ],
 )
 
 go_binary(
     name = "gazelle-foreign-cc", # The binary Gazelle will execute
-    embed = [":gazelle_lib"],
+    srcs = ["main.go"],
+    deps = [
+        "//language",
+    ],
     visibility = ["//visibility:public"],
 )

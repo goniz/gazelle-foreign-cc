@@ -6,20 +6,19 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"strings"
 
 	"github.com/bazelbuild/bazel-gazelle/config"
+	"github.com/bazelbuild/bazel-gazelle/label"
 	"github.com/bazelbuild/bazel-gazelle/language" // For language.Language, if needed for cross-lang
 	"github.com/bazelbuild/bazel-gazelle/repo"
 	"github.com/bazelbuild/bazel-gazelle/resolve"
 	"github.com/bazelbuild/bazel-gazelle/rule"
-	// "github.com/bazelbuild/buildtools/build" // For label.Label if direct manipulation needed
 )
 
 var includeRegex = regexp.MustCompile(`^\s*#\s*include\s*([<"])([^>"]+)([>"])`)
 
 // ResolveDeps analyzes the dependencies for a given rule.
-func ResolveDeps(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache, r *rule.Rule, lang language.Language, from resolve.Label) []resolve.FindResult {
+func ResolveDeps(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache, r *rule.Rule, lang language.Language, from label.Label) []resolve.FindResult {
 	results := []resolve.FindResult{}
 	// cfg := GetCMakeConfig(c) // Get CMake specific config if needed
 
@@ -39,14 +38,15 @@ func ResolveDeps(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache, 
 			// However, the RuleIndex 'ix' should contain rules from the GenerateRules phase.
 			
 			var foundRule bool
-			for _, pkgRule := range ix.RulesInPackage(from.Pkg) {
-				if pkgRule.Name() == libName && (pkgRule.Kind() == "cc_library" || pkgRule.Kind() == "go_library") { // Or other compatible kinds
-					results = append(results, resolve.FindResult{Label: pkgRule.Label()})
-					log.Printf("Rule %s (%s): Resolved linked library %s to local target %s", r.Name(), from.String(), libName, pkgRule.Label().String())
-					foundRule = true
-					break
-				}
-			}
+			// TODO: Fix this - ix.RulesInPackage doesn't exist in current Gazelle version
+			// for _, pkgRule := range ix.RulesInPackage(from.Pkg) {
+			// 	if pkgRule.Name() == libName && (pkgRule.Kind() == "cc_library" || pkgRule.Kind() == "go_library") { // Or other compatible kinds
+			// 		results = append(results, resolve.FindResult{Label: pkgRule.Label()})
+			// 		log.Printf("Rule %s (%s): Resolved linked library %s to local target %s", r.Name(), from.String(), libName, pkgRule.Label().String())
+			// 		foundRule = true
+			// 		break
+			// 	}
+			// }
 
 			if !foundRule {
 				// TODO: Try to resolve in other packages or as external dependencies.
@@ -113,7 +113,7 @@ func ResolveDeps(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache, 
 					res := ix.FindRulesByImport(resolve.ImportSpec{Lang: "cc", Imp: includePath}, lang.Name())
 					if len(res) > 0 {
 						for _, findResult := range res {
-							if !findResult.IsNone() && findResult.Label.Name != "" {
+							if findResult.Label.Name != "" {
 								// Avoid adding self-dependencies if the include resolves to the current rule
 								if findResult.Label.Repo == from.Repo && findResult.Label.Pkg == from.Pkg && findResult.Label.Name == from.Name {
 									log.Printf("Rule %s (%s): Ignoring self-dependency from include '%s' resolving to %s", r.Name(), from.String(), includePath, findResult.Label.String())
@@ -136,7 +136,7 @@ func ResolveDeps(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache, 
 	
 	// Deduplicate results
 	finalResults := []resolve.FindResult{}
-	seen := make(map[resolve.Label]bool)
+	seen := make(map[label.Label]bool)
 	for _, res := range results {
 		if !seen[res.Label] {
 			finalResults = append(finalResults, res)
