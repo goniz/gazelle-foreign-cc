@@ -1,1 +1,0 @@
-/usr/bin/c++ CMakeFiles/app.dir/main.cc.o -o app  libmy_lib.a 

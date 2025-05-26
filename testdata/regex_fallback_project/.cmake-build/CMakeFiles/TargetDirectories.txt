@@ -1,4 +1,0 @@
-/workspace/gazelle-foreign-cc/testdata/regex_fallback_project/.cmake-build/CMakeFiles/simple_app.dir
-/workspace/gazelle-foreign-cc/testdata/regex_fallback_project/.cmake-build/CMakeFiles/simple_lib.dir
-/workspace/gazelle-foreign-cc/testdata/regex_fallback_project/.cmake-build/CMakeFiles/edit_cache.dir
-/workspace/gazelle-foreign-cc/testdata/regex_fallback_project/.cmake-build/CMakeFiles/rebuild_cache.dir
