@@ -1,0 +1,54 @@
+name: Build Gazelle Foreign CC Plugin
+
+on:
+  push:
+    branches: [ main ] # Or your default branch
+  pull_request:
+    branches: [ main ] # Or your default branch
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Bazel
+        uses: bazelbuild/setup-bazel@v1 # Uses an official Bazel setup action
+        with:
+          # Specify the Bazel version if needed, otherwise uses .bazelversion or latest
+          # bazel-version: '6.x' 
+          # Ensure this version is compatible with your project's Bazel setup
+
+      - name: Build gazelle-foreign-cc plugin
+        # Assuming your top-level BUILD.bazel is in gazelle-foreign-cc/
+        # and the plugin binary target is //gazelle:gazelle-foreign-cc
+        run: |
+          cd gazelle-foreign-cc
+          bazel build //gazelle:gazelle-foreign-cc
+
+      - name: Run Gazelle with foreign-cc plugin on testdata
+        run: |
+          cd gazelle-foreign-cc
+          # Ensure the plugin is built (though bazel run should handle this)
+          bazel build //gazelle:gazelle-foreign-cc
+          
+          # Create a temporary directory for the plugin binary to be placed with the expected name
+          PLUGIN_PATH_DIR=$(mktemp -d)
+          cp bazel-bin/gazelle/gazelle-foreign-cc $PLUGIN_PATH_DIR/gazelle-cmake
+          export PATH=$PLUGIN_PATH_DIR:$PATH
+
+          # Run Gazelle using bazel run, which helps with pathing for Gazelle itself.
+          # The custom plugin 'gazelle-cmake' should be found in the PATH.
+          bazel run @gazelle//:gazelle --             testdata/simple_cc_project
+            
+          # Basic check: See if a BUILD.bazel file was created
+          if [ -f "testdata/simple_cc_project/BUILD.bazel" ]; then
+            echo "BUILD.bazel found in testdata/simple_cc_project."
+            cat testdata/simple_cc_project/BUILD.bazel
+          else
+            echo "BUILD.bazel NOT found in testdata/simple_cc_project."
+            exit 1 # Fail the build if the file isn't created
+          fi
+        env:
+          BUILD_WORKSPACE_DIRECTORY: ${{ github.workspace }}/gazelle-foreign-cc

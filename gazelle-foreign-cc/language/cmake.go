@@ -167,7 +167,8 @@ func (l *cmakeLang) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *repo.Re
 		return nil // We only resolve for our own rule kinds.
 	}
 	log.Printf("cmakeLang.Resolve: Called for rule %s %s, imports type: %T", r.Kind(), r.Name(), imports)
-	return gazelle.ResolveDeps(c, ix, rc, r, imports, from)
+	// Pass 'l' (the *cmakeLang instance) as the language.Language argument to ResolveDeps
+	return gazelle.ResolveDeps(c, ix, rc, r, l, from)
 }
 
 // CanCrossResolve indicates whether this language can resolve dependencies
