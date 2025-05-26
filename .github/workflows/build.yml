@@ -21,20 +21,18 @@ jobs:
           # Ensure this version is compatible with your project's Bazel setup
 
       - name: Build gazelle-foreign-cc plugin
-        # Assuming your top-level BUILD.bazel is in gazelle-foreign-cc/
-        # and the plugin binary target is //gazelle:gazelle-foreign-cc
+        # The plugin binary target is //gazelle:gazelle-foreign-cc
         run: |
-          cd gazelle-foreign-cc
           bazel build //gazelle:gazelle-foreign-cc
 
       - name: Run Gazelle with foreign-cc plugin on testdata
         run: |
-          cd gazelle-foreign-cc
           # Ensure the plugin is built (though bazel run should handle this)
           bazel build //gazelle:gazelle-foreign-cc
           
           # Create a temporary directory for the plugin binary to be placed with the expected name
           PLUGIN_PATH_DIR=$(mktemp -d)
+          # The output path for //gazelle:gazelle-foreign-cc from the root is bazel-bin/gazelle/gazelle-foreign-cc
           cp bazel-bin/gazelle/gazelle-foreign-cc $PLUGIN_PATH_DIR/gazelle-cmake
           export PATH=$PLUGIN_PATH_DIR:$PATH
 
@@ -51,4 +49,4 @@ jobs:
             exit 1 # Fail the build if the file isn't created
           fi
         env:
-          BUILD_WORKSPACE_DIRECTORY: ${{ github.workspace }}/gazelle-foreign-cc
+          BUILD_WORKSPACE_DIRECTORY: ${{ github.workspace }}

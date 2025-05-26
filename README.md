@@ -1,6 +1,6 @@
 # Gazelle Foreign CC Plugin
 
-[![Build Status](https://github.com/<YOUR_USERNAME_OR_ORG>/gazelle-foreign-cc/actions/workflows/build.yml/badge.svg)](https://github.com/<YOUR_USERNAME_OR_ORG>/gazelle-foreign-cc/actions/workflows/build.yml)
+[![Build Status](https://github.com/OWNER/REPO/actions/workflows/build.yml/badge.svg)](https://github.com/OWNER/REPO/actions/workflows/build.yml)
 
 A Bazel Gazelle plugin to generate C++ (`cc_library`, `cc_binary`, `cc_test`) rules from existing CMake projects.
 
