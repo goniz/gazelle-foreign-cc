@@ -13,7 +13,7 @@ import (
 )
 
 // Helper function to create a mock language.GenerateArgs
-func createMockGenerateArgs(t *testing.T, relDir string, files []string, otherFiles []string) language.GenerateArgs {
+func createMockGenerateArgs(t *testing.T, relDir string, files []string, genFiles []string) language.GenerateArgs {
 	// Find the workspace root.
 	workspaceRoot, err := bazel.Runfile("") // Gets path to the current directory within the runfiles tree
 	if err != nil {
@@ -30,38 +30,60 @@ func createMockGenerateArgs(t *testing.T, relDir string, files []string, otherFi
 	// Assuming GetCMakeConfig initializes if not present or you have a public constructor/initializer:
 	_ = GetCMakeConfig(c) // Ensures c.Exts["cmake"] is populated.
 
+	// Combine all files into RegularFiles - CMakeLists.txt should be treated as a regular file
+	allFiles := append(files, genFiles...)
+
 	return language.GenerateArgs{
 		Config:       c,
 		Dir:          absDir, // Absolute path to the directory being processed
 		Rel:          filepath.Base(relDir), // Relative path from repo root (or a common root for testdata)
-		RegularFiles: files,
-		OtherFiles:   otherFiles, // e.g., CMakeLists.txt if not a 'RegularFile' in Gazelle's terms for this dir
+		RegularFiles: allFiles,
+		GenFiles:     []string{}, // Generated files
 		File:         nil,        // Represents the existing BUILD file, nil if generating anew
 	}
 }
 
-func TestGenerateRules_SimpleCCProject(t *testing.T) {
-	// Define the structure of your test project within testdata
-	// The path should be relative to where the test is run from,
-	// or use bazel.Runfile to get absolute paths in Bazel test environment.
-	// Assuming 'gazelle-foreign-cc' is the workspace name or not needed if paths are relative from it.
-	projectRelDir := "testdata/simple_cc_project"
+func TestBasic(t *testing.T) {
+	// Simple test to verify the test infrastructure works
+	t.Log("Basic test passed")
+}
+
+func TestGenerateRules_LibZMQProject(t *testing.T) {
+	// Test the libzmq project which has multiple libraries and executables
+	projectRelDir := "testdata/libzmq_project"
 
 	args := createMockGenerateArgs(t,
 		projectRelDir,
-		[]string{"main.cc", "lib.cc", "lib.h"}, // Files Gazelle sees in the directory
-		[]string{"CMakeLists.txt"},             // Other files like CMakeLists.txt
+		[]string{
+			"src/zmq.cpp", "src/socket.cpp", "src/context.cpp", "src/message.cpp",
+			"src/poller.cpp", "src/address.cpp", "src/tcp_connecter.cpp", "src/tcp_listener.cpp",
+			"include/zmq.h", "include/zmq_utils.h",
+			"tests/test_basic.cpp", "perf/inproc_lat.cpp",
+		},
+		[]string{"CMakeLists.txt"},
 	)
 
-	expectedRuleApp := rule.NewRule("cc_binary", "app")
-	expectedRuleApp.SetAttr("srcs", []string{"main.cc"})
-	// Our simple parser doesn't link lib.h to app directly, only sources from add_executable
+	// Expected rules based on the CMakeLists.txt
+	expectedRuleZmq := rule.NewRule("cc_library", "zmq")
+	expectedRuleZmq.SetAttr("srcs", []string{
+		"src/zmq.cpp", "src/socket.cpp", "src/context.cpp", "src/message.cpp",
+		"src/poller.cpp", "src/address.cpp", "src/tcp_connecter.cpp", "src/tcp_listener.cpp",
+	})
+	expectedRuleZmq.SetAttr("hdrs", []string{"include/zmq.h", "include/zmq_utils.h"})
 
-	expectedRuleLib := rule.NewRule("cc_library", "my_lib")
-	expectedRuleLib.SetAttr("srcs", []string{"lib.cc"})
-	expectedRuleLib.SetAttr("hdrs", []string{"lib.h"})
+	expectedRuleZmqStatic := rule.NewRule("cc_library", "zmq-static")
+	expectedRuleZmqStatic.SetAttr("srcs", []string{
+		"src/zmq.cpp", "src/socket.cpp", "src/context.cpp", "src/message.cpp",
+		"src/poller.cpp", "src/address.cpp", "src/tcp_connecter.cpp", "src/tcp_listener.cpp",
+	})
 
-	expectedRules := []*rule.Rule{expectedRuleApp, expectedRuleLib}
+	expectedRuleZmqTest := rule.NewRule("cc_binary", "zmq_test")
+	expectedRuleZmqTest.SetAttr("srcs", []string{"tests/test_basic.cpp"})
+
+	expectedRulePerfTest := rule.NewRule("cc_binary", "perf_inproc_lat")
+	expectedRulePerfTest.SetAttr("srcs", []string{"perf/inproc_lat.cpp"})
+
+	expectedRules := []*rule.Rule{expectedRuleZmq, expectedRuleZmqStatic, expectedRuleZmqTest, expectedRulePerfTest}
 
 	// Call the function under test
 	result := GenerateRules(args)
@@ -72,7 +94,7 @@ func TestGenerateRules_SimpleCCProject(t *testing.T) {
 		for _, r := range result.Gen {
 			t.Logf("Generated rule: %s %s, srcs: %v, hdrs: %v", r.Kind(), r.Name(), r.AttrStrings("srcs"), r.AttrStrings("hdrs"))
 		}
-		return // Avoid further panics if lengths differ
+		return
 	}
 
 	// Sort both slices by rule name for consistent comparison
@@ -90,7 +112,7 @@ func TestGenerateRules_SimpleCCProject(t *testing.T) {
 		// Compare srcs
 		gotSrcs := gotRule.AttrStrings("srcs")
 		expectedSrcs := expectedRule.AttrStrings("srcs")
-		sort.Strings(gotSrcs) // Sort for consistent comparison
+		sort.Strings(gotSrcs)
 		sort.Strings(expectedSrcs)
 		if !reflect.DeepEqual(gotSrcs, expectedSrcs) {
 			t.Errorf("Rule %s %s: Expected srcs %v, got %v",
@@ -100,23 +122,21 @@ func TestGenerateRules_SimpleCCProject(t *testing.T) {
 		// Compare hdrs
 		gotHdrs := gotRule.AttrStrings("hdrs")
 		expectedHdrs := expectedRule.AttrStrings("hdrs")
-		sort.Strings(gotHdrs) // Sort for consistent comparison
+		sort.Strings(gotHdrs)
 		sort.Strings(expectedHdrs)
 		if !reflect.DeepEqual(gotHdrs, expectedHdrs) {
 			t.Errorf("Rule %s %s: Expected hdrs %v, got %v",
 				gotRule.Kind(), gotRule.Name(), expectedHdrs, gotHdrs)
 		}
-		
-		// TODO: Add more checks, e.g. for Empty rules if necessary
 	}
 
-	// Check Empty rules (important for Gazelle's update mechanism)
+	// Check Empty rules
 	if len(result.Empty) != len(expectedRules) {
 		t.Errorf("Expected %d empty rules, got %d.", len(expectedRules), len(result.Empty))
 	} else {
 		sort.Slice(result.Empty, func(i, j int) bool { return result.Empty[i].Name() < result.Empty[j].Name() })
 		for i, gotEmptyRule := range result.Empty {
-			expectedRule := expectedRules[i] // Compare against the main expected rules
+			expectedRule := expectedRules[i]
 			if gotEmptyRule.Kind() != expectedRule.Kind() || gotEmptyRule.Name() != expectedRule.Name() {
 				t.Errorf("Empty rule %d: Expected %s %s, got %s %s",
 					i, expectedRule.Kind(), expectedRule.Name(), gotEmptyRule.Kind(), gotEmptyRule.Name())
@@ -124,6 +144,8 @@ func TestGenerateRules_SimpleCCProject(t *testing.T) {
 		}
 	}
 }
+
+
 
 // TODO: Add more test cases:
 // - CMakeLists.txt with no targets
