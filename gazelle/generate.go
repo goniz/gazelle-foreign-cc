@@ -8,10 +8,36 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/language"
 	"github.com/bazelbuild/bazel-gazelle/rule"
-	// Note: Config is implicitly available via GetCMakeConfig
 )
+
+// CMakeConfig holds configuration settings for the CMake Gazelle plugin.
+type CMakeConfig struct {
+	// Example configuration field: path to CMake executable.
+	CMakeExecutable string
+	// Add other CMake-specific configuration fields here.
+}
+
+// NewCMakeConfig creates a new CMakeConfig with default values.
+func NewCMakeConfig() *CMakeConfig {
+	return &CMakeConfig{
+		CMakeExecutable: "cmake", // Default value
+	}
+}
+
+// GetCMakeConfig retrieves the CMakeConfig from the global config.Config.
+// It initializes it if it doesn't exist.
+func GetCMakeConfig(c *config.Config) *CMakeConfig {
+	if cfg, ok := c.Exts["cmake"].(*CMakeConfig); ok {
+		return cfg
+	}
+	// If not found, create a new one and store it.
+	newCfg := NewCMakeConfig()
+	c.Exts["cmake"] = newCfg
+	return newCfg
+}
 
 // CMakeTarget represents a target defined in CMakeLists.txt
 type CMakeTarget struct {

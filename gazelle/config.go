@@ -86,9 +86,5 @@ func GetCMakeConfig(c *config.Config) *CMakeConfig {
 	return newCfg
 }
 
-// Associate this configurer with the "cmake" language in Gazelle.
-func init() {
-	config.RegisterConfigurer("cmake", func() config.Configurer {
-		return NewCMakeConfig()
-	})
-}
+// Note: In modern Gazelle, configuration is handled through the Language interface
+// methods rather than a separate Configurer registration.
