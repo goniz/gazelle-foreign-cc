@@ -4,7 +4,7 @@ import (
 	"flag"
 	"log"
 
-	"example.com/gazelle-foreign-cc/gazelle"
+	gazelleconfig "example.com/gazelle-foreign-cc/gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/label"
 	"github.com/bazelbuild/bazel-gazelle/language"
@@ -53,7 +53,7 @@ func (l *cmakeLang) KnownDirectives() []string {
 	// Combine directives known by the language itself and by the configurer.
 	// This helps Gazelle recognize all valid directives.
 	baseDirectives := []string{"gazelle:prefix"} // Directives handled by Gazelle itself or the language directly
-	configDirectives := gazelle.NewCMakeConfig().KnownDirectives() // Directives handled by CMakeConfig
+	configDirectives := gazelleconfig.NewCMakeConfig().KnownDirectives() // Directives handled by CMakeConfig
 	return append(baseDirectives, configDirectives...)
 }
 
@@ -64,7 +64,7 @@ func (l *cmakeLang) Configure(c *config.Config, rel string, f *rule.File) {
 		return // Not a BUILD file, skip.
 	}
 
-	cfg := gazelle.GetCMakeConfig(c) // Assuming gazelle is the package name of config.go
+	cfg := gazelleconfig.GetCMakeConfig(c) // Assuming gazelleconfig is the package name of config.go
 
 	// Iterate over directives in the BUILD file
 	for _, directive := range f.Directives {
@@ -137,7 +137,7 @@ func (l *cmakeLang) GenerateRules(args language.GenerateArgs) language.GenerateR
 // this language extension manages.
 func (l *cmakeLang) UpdateRules(args language.GenerateArgs) language.GenerateResult {
 	log.Printf("cmakeLang.UpdateRules: Called for package %s", args.Rel)
-	cfg := gazelle.GetCMakeConfig(args.Config)
+	cfg := gazelleconfig.GetCMakeConfig(args.Config)
 	_ = cfg // Use cfg if needed for update logic based on configuration
 
 	// In a more sophisticated plugin, you might iterate over args.File.Rules

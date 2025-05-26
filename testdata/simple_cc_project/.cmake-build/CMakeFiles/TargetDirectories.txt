@@ -1,0 +1,4 @@
+/workspace/gazelle-foreign-cc/testdata/simple_cc_project/.cmake-build/CMakeFiles/my_lib.dir
+/workspace/gazelle-foreign-cc/testdata/simple_cc_project/.cmake-build/CMakeFiles/app.dir
+/workspace/gazelle-foreign-cc/testdata/simple_cc_project/.cmake-build/CMakeFiles/edit_cache.dir
+/workspace/gazelle-foreign-cc/testdata/simple_cc_project/.cmake-build/CMakeFiles/rebuild_cache.dir

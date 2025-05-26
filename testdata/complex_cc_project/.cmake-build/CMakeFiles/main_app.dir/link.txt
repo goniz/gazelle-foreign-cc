@@ -1,0 +1,1 @@
+/usr/bin/c++ CMakeFiles/main_app.dir/src/main.cpp.o -o main_app  -Wl,-rpath,/workspace/gazelle-foreign-cc/testdata/complex_cc_project/.cmake-build libcore.so libutils.a 

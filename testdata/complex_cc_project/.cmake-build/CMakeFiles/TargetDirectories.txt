@@ -1,0 +1,9 @@
+/workspace/gazelle-foreign-cc/testdata/complex_cc_project/.cmake-build/CMakeFiles/utils.dir
+/workspace/gazelle-foreign-cc/testdata/complex_cc_project/.cmake-build/CMakeFiles/core.dir
+/workspace/gazelle-foreign-cc/testdata/complex_cc_project/.cmake-build/CMakeFiles/main_app.dir
+/workspace/gazelle-foreign-cc/testdata/complex_cc_project/.cmake-build/CMakeFiles/test_runner.dir
+/workspace/gazelle-foreign-cc/testdata/complex_cc_project/.cmake-build/CMakeFiles/edit_cache.dir
+/workspace/gazelle-foreign-cc/testdata/complex_cc_project/.cmake-build/CMakeFiles/rebuild_cache.dir
+/workspace/gazelle-foreign-cc/testdata/complex_cc_project/.cmake-build/plugins/CMakeFiles/plugin_system.dir
+/workspace/gazelle-foreign-cc/testdata/complex_cc_project/.cmake-build/plugins/CMakeFiles/edit_cache.dir
+/workspace/gazelle-foreign-cc/testdata/complex_cc_project/.cmake-build/plugins/CMakeFiles/rebuild_cache.dir

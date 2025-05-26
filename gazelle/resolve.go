@@ -22,37 +22,35 @@ func ResolveDeps(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache, 
 	results := []resolve.FindResult{}
 	// cfg := GetCMakeConfig(c) // Get CMake specific config if needed
 
-	// --- 1. Resolve based on target_link_libraries ---
+	// --- 1. Resolve based on target_link_libraries (from CMake File API) ---
 	linkedLibsAttr := r.PrivateAttr("cmake_linked_libraries")
 	if linkedLibs, ok := linkedLibsAttr.([]string); ok && len(linkedLibs) > 0 {
 		log.Printf("Rule %s (%s): Found linked libraries: %v", r.Name(), from.String(), linkedLibs)
 		for _, libName := range linkedLibs {
-			// Try to resolve this library name to a target in the same package first
-			// depLabel := resolve.Label{Pkg: from.Pkg, Name: libName} // Assume libName is a target name
-			
-			// Check if this target exists in the current package (generated from same CMakeLists.txt)
-			// ix.FindRulesByLabel can find rules if they are already indexed.
-			// For rules in the same package being processed in the same Gazelle run,
-			// they might not be fully in the index yet for each other.
-			// A simpler check: does a rule with this name exist in this package's rules?
-			// However, the RuleIndex 'ix' should contain rules from the GenerateRules phase.
-			
-			var foundRule bool
-			// TODO: Fix this - ix.RulesInPackage doesn't exist in current Gazelle version
-			// for _, pkgRule := range ix.RulesInPackage(from.Pkg) {
-			// 	if pkgRule.Name() == libName && (pkgRule.Kind() == "cc_library" || pkgRule.Kind() == "go_library") { // Or other compatible kinds
-			// 		results = append(results, resolve.FindResult{Label: pkgRule.Label()})
-			// 		log.Printf("Rule %s (%s): Resolved linked library %s to local target %s", r.Name(), from.String(), libName, pkgRule.Label().String())
-			// 		foundRule = true
-			// 		break
-			// 	}
-			// }
-
-			if !foundRule {
-				// TODO: Try to resolve in other packages or as external dependencies.
-				// This would involve looking up `libName` in `ix` more broadly or using a mapping.
-				// For now, we only resolve to local package targets.
-				log.Printf("Rule %s (%s): Could not resolve linked library %s to a local target. External resolution TBD.", r.Name(), from.String(), libName)
+			// Try to find by import spec for local libraries
+			importSpec := resolve.ImportSpec{Lang: "cc", Imp: libName}
+			findResults := ix.FindRulesByImport(importSpec, "cc")
+			if len(findResults) > 0 {
+				for _, findResult := range findResults {
+					if findResult.Label.Name != "" && findResult.Label.Name != from.Name {
+						results = append(results, findResult)
+						log.Printf("Rule %s (%s): Resolved linked library %s to local target %s", r.Name(), from.String(), libName, findResult.Label.String())
+					}
+				}
+			} else {
+				// Try to find by import spec for external libraries
+				importSpec := resolve.ImportSpec{Lang: "cc", Imp: libName}
+				findResults := ix.FindRulesByImport(importSpec, "cc")
+				if len(findResults) > 0 {
+					for _, findResult := range findResults {
+						if findResult.Label.Name != "" && findResult.Label.Name != from.Name {
+							results = append(results, findResult)
+							log.Printf("Rule %s (%s): Resolved linked library %s to external target %s", r.Name(), from.String(), libName, findResult.Label.String())
+						}
+					}
+				} else {
+					log.Printf("Rule %s (%s): Could not resolve linked library %s to any target.", r.Name(), from.String(), libName)
+				}
 			}
 		}
 	}

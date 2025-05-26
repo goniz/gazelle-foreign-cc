@@ -297,17 +297,107 @@ func isSourceFile(filename string) bool {
 	return ext == ".c" || ext == ".cc" || ext == ".cpp" || ext == ".cxx"
 }
 
-// Main GenerateRules function (updated)
+// Main GenerateRules function (updated to use CMake File API)
 func GenerateRules(args language.GenerateArgs) language.GenerateResult {
 	cfg := GetCMakeConfig(args.Config)
 	cmakeFilePath := filepath.Join(args.Dir, "CMakeLists.txt")
 
 	if _, err := os.Stat(cmakeFilePath); os.IsNotExist(err) {
-		log.Printf("No CMakeLists.txt found in %s (%s). Defaulting to simple file scan.", args.Rel, cmakeFilePath)
-		// Fallback to old simple logic if you want, or return empty if CMakeLists.txt is mandatory.
-		// For this iteration, we mandate CMakeLists.txt for this parser.
+		log.Printf("No CMakeLists.txt found in %s (%s). Skipping directory.", args.Rel, cmakeFilePath)
 		return language.GenerateResult{}
 	}
 
-	return generateRulesFromCMakeFile(args, cmakeFilePath, cfg)
+	// Try to use CMake File API first
+	buildDir := filepath.Join(args.Dir, ".cmake-build")
+	api := NewCMakeFileAPI(args.Dir, buildDir, cfg.CMakeExecutable)
+	
+	cmakeTargets, err := api.GenerateFromAPI(args.Rel)
+	if err != nil {
+		log.Printf("CMake File API failed for %s: %v. Falling back to regex parsing.", args.Rel, err)
+		// Fallback to regex-based parsing
+		return generateRulesFromCMakeFile(args, cmakeFilePath, cfg)
+	}
+
+	return generateRulesFromTargets(args, cmakeTargets)
+}
+
+// generateRulesFromTargets converts CMakeTarget objects to Bazel rules
+func generateRulesFromTargets(args language.GenerateArgs, cmakeTargets []*CMakeTarget) language.GenerateResult {
+	res := language.GenerateResult{}
+
+	for _, cmTarget := range cmakeTargets {
+		var r *rule.Rule
+		if cmTarget.Type == "library" {
+			r = rule.NewRule("cc_library", cmTarget.Name)
+		} else if cmTarget.Type == "executable" {
+			r = rule.NewRule("cc_binary", cmTarget.Name)
+		} else {
+			log.Printf("Unknown target type for %s: %s", cmTarget.Name, cmTarget.Type)
+			continue
+		}
+
+		// Filter sources/headers against args.RegularFiles (files actually in this directory)
+		var finalSrcs, finalHdrs []string
+		for _, s := range cmTarget.Sources {
+			if fileExistsInDir(s, args.Dir) {
+				finalSrcs = append(finalSrcs, s)
+			} else {
+				log.Printf("Source file %s for target %s not found in current directory, skipping.", s, cmTarget.Name)
+			}
+		}
+		for _, h := range cmTarget.Headers {
+			if fileExistsInDir(h, args.Dir) {
+				finalHdrs = append(finalHdrs, h)
+			} else {
+				log.Printf("Header file %s for target %s not found in current directory, skipping.", h, cmTarget.Name)
+			}
+		}
+
+		if len(finalSrcs) > 0 {
+			r.SetAttr("srcs", finalSrcs)
+		}
+		if len(finalHdrs) > 0 {
+			r.SetAttr("hdrs", finalHdrs)
+		}
+
+		// Handle include directories
+		if len(cmTarget.IncludeDirectories) > 0 {
+			var includes []string
+			for _, dir := range cmTarget.IncludeDirectories {
+				// Only include relative paths that don't go outside the project
+				if !filepath.IsAbs(dir) && !strings.HasPrefix(dir, "..") {
+					includes = append(includes, dir)
+				}
+			}
+			if len(includes) > 0 {
+				r.SetAttr("includes", includes)
+			}
+		}
+
+		// Store linked libraries for dependency resolution
+		if len(cmTarget.LinkedLibraries) > 0 {
+			r.SetPrivateAttr("cmake_linked_libraries", cmTarget.LinkedLibraries)
+		}
+		if len(cmTarget.IncludeDirectories) > 0 {
+			r.SetPrivateAttr("cmake_include_directories", cmTarget.IncludeDirectories)
+		}
+
+		if r.Attr("srcs") != nil || r.Attr("hdrs") != nil {
+			res.Gen = append(res.Gen, r)
+			res.Empty = append(res.Empty, rule.NewRule(r.Kind(), r.Name()))
+			log.Printf("Generated %s %s in %s with srcs: %v, hdrs: %v, includes: %v, links: %v",
+				r.Kind(), r.Name(), args.Rel, finalSrcs, finalHdrs, cmTarget.IncludeDirectories, cmTarget.LinkedLibraries)
+		} else {
+			log.Printf("Skipping rule for target %s as no valid sources/headers were found in the current directory.", cmTarget.Name)
+		}
+	}
+
+	return res
+}
+
+// fileExistsInDir checks if a file exists in the given directory
+func fileExistsInDir(filename, dir string) bool {
+	fullPath := filepath.Join(dir, filename)
+	_, err := os.Stat(fullPath)
+	return err == nil
 }

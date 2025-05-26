@@ -1,0 +1,2 @@
+/usr/bin/ar qc libplugin_system.a CMakeFiles/plugin_system.dir/plugin.cpp.o CMakeFiles/plugin_system.dir/loader.cpp.o
+/usr/bin/ranlib libplugin_system.a
