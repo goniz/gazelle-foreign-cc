@@ -1,4 +1,4 @@
-module example.com/gazelle-foreign-cc
+module github.com/goniz/gazelle-foreign-cc
 
 go 1.21.4
 

@@ -1,7 +1,7 @@
 package gazelle
 
 import (
-	// cmake "example.com/gazelle-foreign-cc/language" // Adjust the import path if your go.mod module name is different
+	// cmake "github.com/goniz/gazelle-foreign-cc/language" // Adjust the import path if your go.mod module name is different
 	// "github.com/bazelbuild/bazel-gazelle/language"
 )
 

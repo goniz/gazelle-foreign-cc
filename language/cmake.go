@@ -4,7 +4,7 @@ import (
 	"flag"
 	"log"
 
-	gazelleconfig "example.com/gazelle-foreign-cc/gazelle/config"
+	gazelleconfig "github.com/goniz/gazelle-foreign-cc/gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/label"
 	"github.com/bazelbuild/bazel-gazelle/language"

@@ -6,7 +6,7 @@ load("@rules_go//go:def.bzl", "go_binary", "go_library")
 go_library(
     name = "config_lib",
     srcs = ["config.go"],
-    importpath = "example.com/gazelle-foreign-cc/gazelle/config",
+    importpath = "github.com/goniz/gazelle-foreign-cc/gazelle/config",
     visibility = ["//language:__pkg__"],
     deps = [
         "@gazelle//config",
@@ -23,7 +23,7 @@ go_library(
         "resolve.go",
         # config.go is in config_lib
     ],
-    importpath = "example.com/gazelle-foreign-cc/gazelle",
+    importpath = "github.com/goniz/gazelle-foreign-cc/gazelle",
     deps = [
         ":config_lib", # Depends on the local config_lib
         "//language",

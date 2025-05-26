@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"example.com/gazelle-foreign-cc/gazelle"
+	"github.com/goniz/gazelle-foreign-cc/gazelle"
 )
 
 func main() {
