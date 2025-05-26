@@ -15,10 +15,6 @@ jobs:
 
       - name: Set up Bazel
         uses: bazelbuild/setup-bazel@v1 # Uses an official Bazel setup action
-        with:
-          # Specify the Bazel version if needed, otherwise uses .bazelversion or latest
-          # bazel-version: '6.x' 
-          # Ensure this version is compatible with your project's Bazel setup
 
       - name: Build gazelle-foreign-cc plugin
         # The plugin binary target is //gazelle:gazelle-foreign-cc
