@@ -1,2 +1,5 @@
 # Bazel build artifacts
 bazel-*
+
+# CMake build directories
+.cmake-build/

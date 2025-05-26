@@ -4,7 +4,7 @@ load("@rules_go//go:def.bzl", "go_library")
 go_library(
     name = "language",
     srcs = ["cmake.go"],
-    importpath = "example.com/gazelle-foreign-cc/language",
+    importpath = "github.com/goniz/gazelle-foreign-cc/language",
     visibility = ["//gazelle:__pkg__"], # Allow //gazelle package to import this
     deps = [
         "//gazelle:config_lib", # Dependency on the config part of the gazelle package

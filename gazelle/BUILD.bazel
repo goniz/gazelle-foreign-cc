@@ -6,7 +6,7 @@ load("@rules_go//go:def.bzl", "go_binary", "go_library")
 go_library(
     name = "config_lib",
     srcs = ["config.go"],
-    importpath = "example.com/gazelle-foreign-cc/gazelle", # Shared import path for this package's files
+    importpath = "github.com/goniz/gazelle-foreign-cc/gazelle/config",
     visibility = ["//language:__pkg__"],
     deps = [
         "@gazelle//config",
@@ -17,12 +17,13 @@ go_library(
 go_library(
     name = "gazelle_lib",
     srcs = [
+        "cmake_api.go",
         "generate.go",
         "plugin.go",
         "resolve.go",
         # config.go is in config_lib
     ],
-    importpath = "example.com/gazelle-foreign-cc/gazelle",
+    importpath = "github.com/goniz/gazelle-foreign-cc/gazelle",
     deps = [
         ":config_lib", # Depends on the local config_lib
         "//language",
@@ -39,7 +40,7 @@ go_binary(
     name = "gazelle-foreign-cc", # The binary Gazelle will execute
     srcs = ["main.go"],
     deps = [
-        "//language",
+        ":gazelle_lib",
     ],
     visibility = ["//visibility:public"],
 )
