@@ -14,18 +14,31 @@ go_library(
     ],
 )
 
+# This library contains CMake API functionality that language can use
+go_library(
+    name = "cmake_lib",
+    srcs = [
+        "config.go",
+        "generate.go",
+    ],
+    importpath = "github.com/goniz/gazelle-foreign-cc/gazelle",
+    visibility = ["//language:__pkg__"],
+    deps = [
+        "@gazelle//config",
+        "@gazelle//language",
+        "@gazelle//rule",
+    ],
+)
+
 go_library(
     name = "gazelle_lib",
     srcs = [
-        "cmake_api.go",
-        "generate.go",
         "plugin.go",
         "resolve.go",
-        # config.go is in config_lib
     ],
     importpath = "github.com/goniz/gazelle-foreign-cc/gazelle",
     deps = [
-        ":config_lib", # Depends on the local config_lib
+        ":cmake_lib", # Depends on the cmake_lib which has the core functionality
         "//language",
         "@gazelle//config",
         "@gazelle//label",
@@ -40,7 +53,7 @@ go_binary(
     name = "gazelle-foreign-cc", # The binary Gazelle will execute
     srcs = ["main.go"],
     deps = [
-        ":gazelle_lib",
+        "//language",
     ],
     visibility = ["//visibility:public"],
 )

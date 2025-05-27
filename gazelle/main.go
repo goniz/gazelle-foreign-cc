@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/goniz/gazelle-foreign-cc/gazelle"
+	"github.com/goniz/gazelle-foreign-cc/language"
 )
 
 func main() {
@@ -32,7 +32,7 @@ func main() {
 
 	// Test the CMake File API
 	buildDir := filepath.Join(*sourceDir, ".cmake-build")
-	api := gazelle.NewCMakeFileAPI(*sourceDir, buildDir, "cmake")
+	api := language.NewCMakeFileAPI(*sourceDir, buildDir, "cmake")
 
 	targets, err := api.GenerateFromAPI("")
 	if err != nil {

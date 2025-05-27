@@ -1,4 +1,4 @@
-package gazelle
+package language
 
 import (
 	"encoding/json"
@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 	"log"
+
+	"github.com/goniz/gazelle-foreign-cc/gazelle"
 )
 
 // CMake File API structures
@@ -315,7 +317,7 @@ func (api *CMakeFileAPI) ReadAPIResponse() (*APIIndex, *Codemodel, map[string]*T
 }
 
 // GenerateFromAPI generates Bazel rules using CMake File API
-func (api *CMakeFileAPI) GenerateFromAPI(relativeDir string) ([]*CMakeTarget, error) {
+func (api *CMakeFileAPI) GenerateFromAPI(relativeDir string) ([]*gazelle.CMakeTarget, error) {
 	// Create query files
 	if err := api.CreateQuery(); err != nil {
 		return nil, fmt.Errorf("failed to create API query: %w", err)
@@ -333,7 +335,7 @@ func (api *CMakeFileAPI) GenerateFromAPI(relativeDir string) ([]*CMakeTarget, er
 	}
 
 	// Convert targets to CMakeTarget format
-	var cmakeTargets []*CMakeTarget
+	var cmakeTargets []*gazelle.CMakeTarget
 
 	for _, target := range targets {
 		// Skip utility targets and imported targets
@@ -341,7 +343,7 @@ func (api *CMakeFileAPI) GenerateFromAPI(relativeDir string) ([]*CMakeTarget, er
 			continue
 		}
 
-		cmakeTarget := &CMakeTarget{
+		cmakeTarget := &gazelle.CMakeTarget{
 			Name: target.Name,
 		}
 
@@ -414,4 +416,27 @@ func (api *CMakeFileAPI) GenerateFromAPI(relativeDir string) ([]*CMakeTarget, er
 
 	log.Printf("Generated %d targets from CMake File API for directory %s", len(cmakeTargets), relativeDir)
 	return cmakeTargets, nil
+}
+
+// Helper functions
+
+func appendIfMissing(slice []string, str string) []string {
+	for _, s := range slice {
+		if s == str {
+			return slice
+		}
+	}
+	return append(slice, str)
+}
+
+// Helper: Basic check for header file extensions
+func isHeaderFile(filename string) bool {
+	ext := strings.ToLower(filepath.Ext(filename))
+	return ext == ".h" || ext == ".hh" || ext == ".hpp" || ext == ".hxx"
+}
+
+// Helper: Basic check for C++ source file extensions
+func isSourceFile(filename string) bool {
+	ext := strings.ToLower(filepath.Ext(filename))
+	return ext == ".c" || ext == ".cc" || ext == ".cpp" || ext == ".cxx"
 }

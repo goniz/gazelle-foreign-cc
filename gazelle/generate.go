@@ -8,36 +8,9 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/language"
 	"github.com/bazelbuild/bazel-gazelle/rule"
 )
-
-// CMakeConfig holds configuration settings for the CMake Gazelle plugin.
-type CMakeConfig struct {
-	// Example configuration field: path to CMake executable.
-	CMakeExecutable string
-	// Add other CMake-specific configuration fields here.
-}
-
-// NewCMakeConfig creates a new CMakeConfig with default values.
-func NewCMakeConfig() *CMakeConfig {
-	return &CMakeConfig{
-		CMakeExecutable: "cmake", // Default value
-	}
-}
-
-// GetCMakeConfig retrieves the CMakeConfig from the global config.Config.
-// It initializes it if it doesn't exist.
-func GetCMakeConfig(c *config.Config) *CMakeConfig {
-	if cfg, ok := c.Exts["cmake"].(*CMakeConfig); ok {
-		return cfg
-	}
-	// If not found, create a new one and store it.
-	newCfg := NewCMakeConfig()
-	c.Exts["cmake"] = newCfg
-	return newCfg
-}
 
 // CMakeTarget represents a target defined in CMakeLists.txt
 type CMakeTarget struct {
@@ -307,97 +280,8 @@ func GenerateRules(args language.GenerateArgs) language.GenerateResult {
 		return language.GenerateResult{}
 	}
 
-	// Try to use CMake File API first
-	buildDir := filepath.Join(args.Dir, ".cmake-build")
-	api := NewCMakeFileAPI(args.Dir, buildDir, cfg.CMakeExecutable)
-	
-	cmakeTargets, err := api.GenerateFromAPI(args.Rel)
-	if err != nil {
-		log.Printf("CMake File API failed for %s: %v. Falling back to regex parsing.", args.Rel, err)
-		// Fallback to regex-based parsing
-		return generateRulesFromCMakeFile(args, cmakeFilePath, cfg)
-	}
-
-	return generateRulesFromTargets(args, cmakeTargets)
+	// Use regex-based parsing (fallback method)
+	return generateRulesFromCMakeFile(args, cmakeFilePath, cfg)
 }
 
-// generateRulesFromTargets converts CMakeTarget objects to Bazel rules
-func generateRulesFromTargets(args language.GenerateArgs, cmakeTargets []*CMakeTarget) language.GenerateResult {
-	res := language.GenerateResult{}
 
-	for _, cmTarget := range cmakeTargets {
-		var r *rule.Rule
-		if cmTarget.Type == "library" {
-			r = rule.NewRule("cc_library", cmTarget.Name)
-		} else if cmTarget.Type == "executable" {
-			r = rule.NewRule("cc_binary", cmTarget.Name)
-		} else {
-			log.Printf("Unknown target type for %s: %s", cmTarget.Name, cmTarget.Type)
-			continue
-		}
-
-		// Filter sources/headers against args.RegularFiles (files actually in this directory)
-		var finalSrcs, finalHdrs []string
-		for _, s := range cmTarget.Sources {
-			if fileExistsInDir(s, args.Dir) {
-				finalSrcs = append(finalSrcs, s)
-			} else {
-				log.Printf("Source file %s for target %s not found in current directory, skipping.", s, cmTarget.Name)
-			}
-		}
-		for _, h := range cmTarget.Headers {
-			if fileExistsInDir(h, args.Dir) {
-				finalHdrs = append(finalHdrs, h)
-			} else {
-				log.Printf("Header file %s for target %s not found in current directory, skipping.", h, cmTarget.Name)
-			}
-		}
-
-		if len(finalSrcs) > 0 {
-			r.SetAttr("srcs", finalSrcs)
-		}
-		if len(finalHdrs) > 0 {
-			r.SetAttr("hdrs", finalHdrs)
-		}
-
-		// Handle include directories
-		if len(cmTarget.IncludeDirectories) > 0 {
-			var includes []string
-			for _, dir := range cmTarget.IncludeDirectories {
-				// Only include relative paths that don't go outside the project
-				if !filepath.IsAbs(dir) && !strings.HasPrefix(dir, "..") {
-					includes = append(includes, dir)
-				}
-			}
-			if len(includes) > 0 {
-				r.SetAttr("includes", includes)
-			}
-		}
-
-		// Store linked libraries for dependency resolution
-		if len(cmTarget.LinkedLibraries) > 0 {
-			r.SetPrivateAttr("cmake_linked_libraries", cmTarget.LinkedLibraries)
-		}
-		if len(cmTarget.IncludeDirectories) > 0 {
-			r.SetPrivateAttr("cmake_include_directories", cmTarget.IncludeDirectories)
-		}
-
-		if r.Attr("srcs") != nil || r.Attr("hdrs") != nil {
-			res.Gen = append(res.Gen, r)
-			res.Empty = append(res.Empty, rule.NewRule(r.Kind(), r.Name()))
-			log.Printf("Generated %s %s in %s with srcs: %v, hdrs: %v, includes: %v, links: %v",
-				r.Kind(), r.Name(), args.Rel, finalSrcs, finalHdrs, cmTarget.IncludeDirectories, cmTarget.LinkedLibraries)
-		} else {
-			log.Printf("Skipping rule for target %s as no valid sources/headers were found in the current directory.", cmTarget.Name)
-		}
-	}
-
-	return res
-}
-
-// fileExistsInDir checks if a file exists in the given directory
-func fileExistsInDir(filename, dir string) bool {
-	fullPath := filepath.Join(dir, filename)
-	_, err := os.Stat(fullPath)
-	return err == nil
-}

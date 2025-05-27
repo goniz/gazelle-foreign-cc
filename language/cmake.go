@@ -3,8 +3,11 @@ package language
 import (
 	"flag"
 	"log"
+	"os"
+	"path/filepath"
+	"strings"
 
-	gazelleconfig "github.com/goniz/gazelle-foreign-cc/gazelle/config"
+	"github.com/goniz/gazelle-foreign-cc/gazelle"
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/label"
 	"github.com/bazelbuild/bazel-gazelle/language"
@@ -53,7 +56,7 @@ func (l *cmakeLang) KnownDirectives() []string {
 	// Combine directives known by the language itself and by the configurer.
 	// This helps Gazelle recognize all valid directives.
 	baseDirectives := []string{"gazelle:prefix"} // Directives handled by Gazelle itself or the language directly
-	configDirectives := gazelleconfig.NewCMakeConfig().KnownDirectives() // Directives handled by CMakeConfig
+	configDirectives := gazelle.NewCMakeConfig().KnownDirectives() // Directives handled by CMakeConfig
 	return append(baseDirectives, configDirectives...)
 }
 
@@ -64,9 +67,12 @@ func (l *cmakeLang) Configure(c *config.Config, rel string, f *rule.File) {
 		return // Not a BUILD file, skip.
 	}
 
-	cfg := gazelleconfig.GetCMakeConfig(c) // Assuming gazelleconfig is the package name of config.go
+	cfg := gazelle.GetCMakeConfig(c)
 
-	// Iterate over directives in the BUILD file
+	// Let the CMakeConfig handle its own directives
+	cfg.Configure(c, rel, f)
+
+	// Iterate over directives in the BUILD file for language-specific handling
 	for _, directive := range f.Directives {
 		// Check if the directive is one that the language itself handles directly
 		// (as opposed to general configuration handled by CMakeConfig.Configure)
@@ -77,15 +83,10 @@ func (l *cmakeLang) Configure(c *config.Config, rel string, f *rule.File) {
 		//    // Update language-specific state if necessary
 		default:
 			// If not handled by the language directly, it might be a general config
-			// directive already processed by CMakeConfig.Configure via RegisterConfigurer.
-			// Or, it could be an unknown directive if not in KnownDirectives() of either.
+			// directive already processed by CMakeConfig.Configure.
 		}
 	}
 
-	// The CMakeConfig.Configure method (registered via config.RegisterConfigurer)
-	// will also be called by Gazelle automatically for directives in its KnownDirectives list.
-	// So, cfg will be populated by directives like "cmake_executable".
-	// You can access cfg.CMakeExecutable here if needed for language-specific logic.
 	log.Printf("language.Configure: CMake executable is configured to: %s (in directory %s)", cfg.CMakeExecutable, rel)
 }
 
@@ -124,11 +125,109 @@ func (l *cmakeLang) Loads() []rule.LoadInfo {
 // GenerateRules is called in each directory where an update is requested
 // in resolve or generate mode.
 func (l *cmakeLang) GenerateRules(args language.GenerateArgs) language.GenerateResult {
-	// For now, return empty result - this is a basic stub
-	// In a real implementation, this would parse CMakeLists.txt files
-	// and generate cc_library, cc_binary rules
+	cfg := gazelle.GetCMakeConfig(args.Config)
+	cmakeFilePath := filepath.Join(args.Dir, "CMakeLists.txt")
+
+	if _, err := os.Stat(cmakeFilePath); os.IsNotExist(err) {
+		log.Printf("No CMakeLists.txt found in %s (%s). Skipping directory.", args.Rel, cmakeFilePath)
+		return language.GenerateResult{}
+	}
+
 	log.Printf("cmakeLang.GenerateRules: Called for package %s", args.Rel)
-	return language.GenerateResult{}
+
+	// Try to use CMake File API first
+	buildDir := filepath.Join(args.Dir, ".cmake-build")
+	api := NewCMakeFileAPI(args.Dir, buildDir, cfg.CMakeExecutable)
+	
+	cmakeTargets, err := api.GenerateFromAPI(args.Rel)
+	if err != nil {
+		log.Printf("CMake File API failed for %s: %v. Falling back to regex parsing.", args.Rel, err)
+		// Fallback to regex-based parsing using the existing function from gazelle package
+		return gazelle.GenerateRules(args)
+	}
+
+	return l.generateRulesFromTargets(args, cmakeTargets)
+}
+
+// generateRulesFromTargets converts CMakeTarget objects to Bazel rules
+func (l *cmakeLang) generateRulesFromTargets(args language.GenerateArgs, cmakeTargets []*gazelle.CMakeTarget) language.GenerateResult {
+	res := language.GenerateResult{}
+
+	for _, cmTarget := range cmakeTargets {
+		var r *rule.Rule
+		if cmTarget.Type == "library" {
+			r = rule.NewRule("cc_library", cmTarget.Name)
+		} else if cmTarget.Type == "executable" {
+			r = rule.NewRule("cc_binary", cmTarget.Name)
+		} else {
+			log.Printf("Unknown target type for %s: %s", cmTarget.Name, cmTarget.Type)
+			continue
+		}
+
+		// Filter sources/headers against files actually in this directory
+		var finalSrcs, finalHdrs []string
+		for _, s := range cmTarget.Sources {
+			if l.fileExistsInDir(s, args.Dir) {
+				finalSrcs = append(finalSrcs, s)
+			} else {
+				log.Printf("Source file %s for target %s not found in current directory, skipping.", s, cmTarget.Name)
+			}
+		}
+		for _, h := range cmTarget.Headers {
+			if l.fileExistsInDir(h, args.Dir) {
+				finalHdrs = append(finalHdrs, h)
+			} else {
+				log.Printf("Header file %s for target %s not found in current directory, skipping.", h, cmTarget.Name)
+			}
+		}
+
+		if len(finalSrcs) > 0 {
+			r.SetAttr("srcs", finalSrcs)
+		}
+		if len(finalHdrs) > 0 {
+			r.SetAttr("hdrs", finalHdrs)
+		}
+
+		// Handle include directories
+		if len(cmTarget.IncludeDirectories) > 0 {
+			var includes []string
+			for _, dir := range cmTarget.IncludeDirectories {
+				// Only include relative paths that don't go outside the project
+				if !filepath.IsAbs(dir) && !strings.HasPrefix(dir, "..") {
+					includes = append(includes, dir)
+				}
+			}
+			if len(includes) > 0 {
+				r.SetAttr("includes", includes)
+			}
+		}
+
+		// Store linked libraries for dependency resolution
+		if len(cmTarget.LinkedLibraries) > 0 {
+			r.SetPrivateAttr("cmake_linked_libraries", cmTarget.LinkedLibraries)
+		}
+		if len(cmTarget.IncludeDirectories) > 0 {
+			r.SetPrivateAttr("cmake_include_directories", cmTarget.IncludeDirectories)
+		}
+
+		if r.Attr("srcs") != nil || r.Attr("hdrs") != nil {
+			res.Gen = append(res.Gen, r)
+			res.Empty = append(res.Empty, rule.NewRule(r.Kind(), r.Name()))
+			log.Printf("Generated %s %s in %s with srcs: %v, hdrs: %v, includes: %v, links: %v",
+				r.Kind(), r.Name(), args.Rel, finalSrcs, finalHdrs, cmTarget.IncludeDirectories, cmTarget.LinkedLibraries)
+		} else {
+			log.Printf("Skipping rule for target %s as no valid sources/headers were found in the current directory.", cmTarget.Name)
+		}
+	}
+
+	return res
+}
+
+// fileExistsInDir checks if a file exists in the given directory
+func (l *cmakeLang) fileExistsInDir(filename, dir string) bool {
+	fullPath := filepath.Join(dir, filename)
+	_, err := os.Stat(fullPath)
+	return err == nil
 }
 
 // UpdateRules is called to update existing rules in a BUILD file.
@@ -137,7 +236,7 @@ func (l *cmakeLang) GenerateRules(args language.GenerateArgs) language.GenerateR
 // this language extension manages.
 func (l *cmakeLang) UpdateRules(args language.GenerateArgs) language.GenerateResult {
 	log.Printf("cmakeLang.UpdateRules: Called for package %s", args.Rel)
-	cfg := gazelleconfig.GetCMakeConfig(args.Config)
+	cfg := gazelle.GetCMakeConfig(args.Config)
 	_ = cfg // Use cfg if needed for update logic based on configuration
 
 	// In a more sophisticated plugin, you might iterate over args.File.Rules
