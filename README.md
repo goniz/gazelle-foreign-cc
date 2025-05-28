@@ -4,6 +4,10 @@
 
 A Bazel Gazelle plugin to generate C++ (`cc_library`, `cc_binary`, `cc_test`) rules from existing CMake projects.
 
+## Examples
+
+See the [examples directory](/examples) for sample projects demonstrating how to use this plugin.
+
 ## Current Status
 
 This plugin is under active development. Currently, it can:
