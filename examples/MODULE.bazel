@@ -1,0 +1,6 @@
+module(
+    name = "examples",
+    version = "0.1.0",
+)
+
+# Add dependencies here as needed
