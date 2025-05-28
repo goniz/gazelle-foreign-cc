@@ -3,4 +3,7 @@ module(
     version = "0.1.0",
 )
 
+bazel_dep(name = "gazelle", version = "0.43.0")
+bazel_dep(name = "gazelle-foreign-cc", version = "0.1.0", local_path_override = "..")
+
 # Add dependencies here as needed
