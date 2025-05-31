@@ -16,6 +16,15 @@ jobs:
       - name: Set up Bazel
         uses: bazel-contrib/setup-bazel@0.14.0
 
+      - name: Verify Bazel module integrity
+        run: |
+          # Check if module dependencies are tidy and up-to-date for main module
+          bazel mod tidy --verbose
+          
+          # Check if module dependencies are tidy and up-to-date for examples submodule
+          cd examples
+          bazel mod tidy --verbose
+
       - name: Build gazelle-foreign-cc plugin
         # The plugin binary target is //gazelle:gazelle-foreign-cc
         run: |
