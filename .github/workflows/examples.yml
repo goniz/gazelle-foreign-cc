@@ -1,0 +1,43 @@
+name: Build Examples
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build_examples:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Bazel
+        uses: bazel-contrib/setup-bazel@0.14.0
+
+      - name: Build main plugin
+        run: |
+          bazel build //gazelle:gazelle-foreign-cc
+
+      - name: Run Gazelle on examples and build
+        run: |
+          # Set up plugin path
+          PLUGIN_PATH_DIR=$(mktemp -d)
+          cp bazel-bin/gazelle/gazelle-foreign-cc_/gazelle-foreign-cc $PLUGIN_PATH_DIR/gazelle-cmake
+          export PATH=$PLUGIN_PATH_DIR:$PATH
+          
+          # Build gazelle
+          bazel build @gazelle//cmd/gazelle
+          
+          cd examples
+          
+          # Run gazelle on examples directory
+          echo "Running gazelle on examples..."
+          ../bazel-bin/external/gazelle+/cmd/gazelle/gazelle_/gazelle .
+          
+          # Build all examples
+          echo "Building all examples..."
+          bazel build //...
+        env:
+          BUILD_WORKSPACE_DIRECTORY: ${{ github.workspace }}/examples
