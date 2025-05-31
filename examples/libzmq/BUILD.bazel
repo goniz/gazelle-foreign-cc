@@ -1,0 +1,21 @@
+# LibZMQ example BUILD file
+
+# Example client and server applications using libzmq
+cc_binary(
+    name = "example_client",
+    srcs = ["example_client.cpp"],
+    deps = [
+        "@libzmq//:zmq",
+    ],
+)
+
+cc_binary(
+    name = "example_server", 
+    srcs = ["example_server.cpp"],
+    deps = [
+        "@libzmq//:zmq",
+    ],
+)
+
+# Gazelle directive to use our plugin for generating BUILD files for libzmq
+# gazelle:prefix github.com/examples/libzmq
