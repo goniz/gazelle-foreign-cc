@@ -6,7 +6,23 @@ A Bazel Gazelle plugin to generate C++ (`cc_library`, `cc_binary`, `cc_test`) ru
 
 ## Examples
 
-See the [examples directory](/examples) for sample projects demonstrating how to use this plugin.
+The [examples directory](/examples) contains real-world demonstrations of the gazelle-foreign-cc plugin. The examples directory is a separate Bazel module that references the main plugin using a local path override.
+
+Available examples:
+- **simple_hello**: Basic C++ "Hello, World!" project
+- **libzmq**: Real-world example using ZeroMQ messaging library
+
+To build and test examples:
+```bash
+cd examples
+bazel build //...
+```
+
+To run gazelle on examples:
+```bash
+cd examples
+bazel run //:gazelle
+```
 
 ## Current Status
 

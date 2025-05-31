@@ -8,6 +8,6 @@ load("@gazelle//:def.bzl", "gazelle")
 # Default gazelle target for examples
 gazelle(
     name = "gazelle",
-    # Use the gazelle-foreign-cc plugin
+    # Use the gazelle-foreign-cc plugin from the main module
     gazelle = "@gazelle-foreign-cc//gazelle:gazelle-foreign-cc",
 )
