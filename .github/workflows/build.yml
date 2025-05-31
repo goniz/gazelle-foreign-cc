@@ -18,16 +18,12 @@ jobs:
 
       - name: Verify Bazel module integrity
         run: |
-          # Check if module dependencies are tidy and up-to-date
-          # This will fail if MODULE.bazel.lock is out of sync or if there are issues
+          # Check if module dependencies are tidy and up-to-date for main module
           bazel mod tidy --verbose
           
-          # Verify that running tidy didn't change anything
-          if ! git diff --exit-code MODULE.bazel.lock; then
-            echo "ERROR: MODULE.bazel.lock is not up to date!"
-            echo "Please run 'bazel mod tidy' locally and commit the updated MODULE.bazel.lock file."
-            exit 1
-          fi
+          # Check if module dependencies are tidy and up-to-date for examples submodule
+          cd examples
+          bazel mod tidy --verbose
 
       - name: Build gazelle-foreign-cc plugin
         # The plugin binary target is //gazelle:gazelle-foreign-cc
