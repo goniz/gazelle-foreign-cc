@@ -32,6 +32,17 @@ This plugin is under active development. Currently, it can:
 bazel build //gazelle:gazelle-foreign-cc
 ```
 
+## Development
+
+### Module Dependencies
+This project uses Bazel's module system (bzlmod). After making changes to `MODULE.bazel`, ensure the lock file is up-to-date:
+
+```bash
+bazel mod tidy
+```
+
+The CI will fail if `MODULE.bazel.lock` is not synchronized with `MODULE.bazel`.
+
 ## Usage
 (Details to be added once the plugin is more feature-complete)
 
