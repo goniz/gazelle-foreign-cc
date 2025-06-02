@@ -12,7 +12,6 @@ local_path_override(
 
 # Add common dependencies for C++ projects
 bazel_dep(name = "rules_cc", version = "0.1.1")
-bazel_dep(name = "rules_foreign_cc", version = "0.12.0")
 bazel_dep(name = "gazelle", version = "0.43.0")
 
 # For fetching external dependencies
