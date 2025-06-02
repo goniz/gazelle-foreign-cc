@@ -1,0 +1,6 @@
+# gazelle:cmake @example_cmake_lib//:srcs
+
+# This BUILD.bazel file demonstrates the cmake directive usage.
+# When gazelle runs, it will populate this file with cc_library and cc_binary 
+# rules generated from the CMakeLists.txt found in the @example_cmake_lib 
+# external repository.
