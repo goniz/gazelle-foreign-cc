@@ -12,8 +12,6 @@ import (
 type CMakeConfig struct {
 	// Example configuration field: path to CMake executable.
 	CMakeExecutable string
-	// CMakeSource holds the external repository source for cmake directive
-	CMakeSource string
 	// Add other CMake-specific configuration fields here.
 }
 
@@ -72,8 +70,8 @@ func (cfg *CMakeConfig) Configure(c *config.Config, rel string, f *rule.File) {
 			cfg.CMakeExecutable = directive.Value
 			log.Printf("Configure: Set CMake executable to %s from directive in %s", cfg.CMakeExecutable, rel)
 		case cmakeDirective:
-			cfg.CMakeSource = directive.Value
-			log.Printf("Configure: Set CMake source to %s from directive in %s", cfg.CMakeSource, rel)
+			// The cmake directive is handled per-package in GenerateRules, not globally
+			log.Printf("Configure: Found cmake directive %s in %s (will be processed per-package)", directive.Value, rel)
 		// Add cases for other directives here
 		default:
 			// Gazelle will warn about unknown directives if not in KnownDirectives()
