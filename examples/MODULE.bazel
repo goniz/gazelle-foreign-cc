@@ -3,4 +3,45 @@ module(
     version = "0.1.0",
 )
 
-# Add dependencies here as needed
+# Reference the main gazelle-foreign-cc module using local path override
+bazel_dep(name = "gazelle-foreign-cc", version = "0.1.0")
+local_path_override(
+    module_name = "gazelle-foreign-cc",
+    path = "..",
+)
+
+# Add common dependencies for C++ projects
+bazel_dep(name = "rules_cc", version = "0.1.1")
+bazel_dep(name = "rules_foreign_cc", version = "0.12.0")
+bazel_dep(name = "gazelle", version = "0.43.0")
+
+# For fetching external dependencies
+bazel_dep(name = "bazel_skylib", version = "1.7.1")
+
+# Register libzmq repository using use_repo_rule
+http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+http_archive(
+    name = "libzmq",
+    url = "https://github.com/zeromq/libzmq/releases/download/v4.3.5/zeromq-4.3.5.tar.gz",
+    sha256 = "6653ef5910f17954861fe72332e68b03ca6e4d9c7160eb3a8de5a5a913bfab43",
+    strip_prefix = "zeromq-4.3.5",
+    build_file_content = """
+# Placeholder BUILD file for libzmq
+# This will be replaced by gazelle-generated content
+
+filegroup(
+    name = "all_files",
+    srcs = glob(["**/*"]),
+    visibility = ["//visibility:public"],
+)
+
+# CMakeLists.txt should be processed by gazelle
+exports_files(["CMakeLists.txt"])
+
+# Basic library target that gazelle should replace
+cc_library(
+    name = "zmq",
+    visibility = ["//visibility:public"],
+)
+""",
+)

@@ -1,0 +1,13 @@
+# Examples directory BUILD file
+
+# This file defines build targets for the examples directory
+# It includes targets for running gazelle on example projects
+
+load("@gazelle//:def.bzl", "gazelle")
+
+# Default gazelle target for examples
+gazelle(
+    name = "gazelle",
+    # Use the gazelle-foreign-cc plugin from the main module
+    gazelle = "@gazelle-foreign-cc//gazelle:gazelle-foreign-cc",
+)
