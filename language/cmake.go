@@ -192,7 +192,6 @@ func (l *cmakeLang) generateRulesFromExternalSource(args language.GenerateArgs, 
 	}
 	
 	repoName := parts[0][1:] // Remove @ prefix
-	targetPart := parts[1]
 	
 	// Validate repository name
 	if repoName == "" {

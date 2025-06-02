@@ -39,8 +39,6 @@ func TestCMakeDirectiveParsing(t *testing.T) {
 func TestExternalRepoPathGeneration(t *testing.T) {
 	// Test the external repository path generation logic
 	
-	lang := &cmakeLang{}
-	
 	// Create mock args
 	c := &config.Config{
 		RepoRoot: "/test/workspace",

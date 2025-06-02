@@ -49,11 +49,4 @@ go_library(
     ],
 )
 
-go_binary(
-    name = "gazelle-foreign-cc", # The binary Gazelle will execute
-    srcs = ["main.go"],
-    deps = [
-        "//language",
-    ],
-    visibility = ["//visibility:public"],
-)
+
