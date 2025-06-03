@@ -1,5 +1,5 @@
 # gazelle-foreign-cc/gazelle/BUILD.bazel
-load("@rules_go//go:def.bzl", "go_binary", "go_library")
+load("@rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
 
 # This library is for the config part, so language can depend on it
 # without a circular dependency on the main gazelle plugin binary's package.
@@ -54,6 +54,18 @@ alias(
     name = "gazelle-foreign-cc",
     actual = "//cmd/gazelle-foreign-cc:gazelle-foreign-cc",
     visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "gazelle_tests",
+    srcs = [
+        "config_test.go",
+        "generate_test.go",
+    ],
+    embed = [":cmake_lib"],
+    deps = [
+        "@rules_go//go/tools/bazel",
+    ],
 )
 
 

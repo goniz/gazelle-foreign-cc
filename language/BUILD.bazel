@@ -1,5 +1,5 @@
 # gazelle-foreign-cc/language/BUILD.bazel
-load("@rules_go//go:def.bzl", "go_library")
+load("@rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "language",
@@ -8,7 +8,7 @@ go_library(
         "cmake_api.go",
     ],
     importpath = "github.com/goniz/gazelle-foreign-cc/language",
-    visibility = ["//gazelle:__pkg__", "//:__pkg__"], # Allow //gazelle and root packages to import this
+    visibility = ["//gazelle:__pkg__", "//cmd/gazelle-foreign-cc:__pkg__", "//:__pkg__"], # Allow plugin binary to import this
     deps = [
         "//gazelle:cmake_lib",
         "@gazelle//config",
@@ -18,4 +18,11 @@ go_library(
         "@gazelle//resolve",
         "@gazelle//rule",
     ],
+)
+
+go_test(
+    name = "language_tests",
+    srcs = ["cmake_test.go"],
+    embed = [":language"],
+    deps = ["//gazelle:cmake_lib"],
 )
