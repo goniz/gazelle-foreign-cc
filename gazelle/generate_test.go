@@ -1,6 +1,7 @@
 package gazelle
 
 import (
+	"os"
 	"path/filepath"
 	"reflect"
 	"sort"
@@ -17,7 +18,24 @@ func createMockGenerateArgs(t *testing.T, relDir string, files []string) languag
 	// Find the workspace root.
 	workspaceRoot, err := bazel.Runfile("") // Gets path to the current directory within the runfiles tree
 	if err != nil {
-		t.Fatalf("Could not find workspace root: %v", err)
+		// Fallback for non-Bazel environments (go test)
+		// Find the workspace root by looking for go.mod
+		wd, err := filepath.Abs(".")
+		if err != nil {
+			t.Fatalf("Could not get working directory: %v", err)
+		}
+		// Walk up until we find go.mod
+		for {
+			if _, err := os.Stat(filepath.Join(wd, "go.mod")); err == nil {
+				workspaceRoot = wd
+				break
+			}
+			parent := filepath.Dir(wd)
+			if parent == wd {
+				t.Fatalf("Could not find workspace root (go.mod not found)")
+			}
+			wd = parent
+		}
 	}
 	// Construct the absolute path to the testdata directory
 	absDir := filepath.Join(workspaceRoot, relDir)
