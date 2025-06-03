@@ -1,4 +1,4 @@
-name: Build Examples
+name: CI
 
 on:
   push:
@@ -7,37 +7,40 @@ on:
     branches: [ main ]
 
 jobs:
-  build_examples:
+  build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
       - name: Set up Bazel
         uses: bazel-contrib/setup-bazel@0.14.0
 
-      - name: Build main plugin
+      - name: Verify Bazel module integrity
         run: |
-          bazel build //gazelle:gazelle-foreign-cc
+          bazel mod tidy
+          cd examples
+          bazel mod tidy
 
-      - name: Run Gazelle on examples and build
+      - name: Build gazelle-foreign-cc plugin
+        run: bazel build //gazelle:gazelle-foreign-cc
+
+      - name: Run Go tests
+        run: bazel test //...
+
+      - name: Generate and build examples
         run: |
-          # Set up plugin path
           PLUGIN_PATH_DIR=$(mktemp -d)
           cp bazel-bin/gazelle/gazelle-foreign-cc_/gazelle-foreign-cc $PLUGIN_PATH_DIR/gazelle-cmake
           export PATH=$PLUGIN_PATH_DIR:$PATH
-          
-          # Build gazelle
           bazel build @gazelle//cmd/gazelle
-          
           cd examples
-          
-          # Run gazelle on examples directory
-          echo "Running gazelle on examples..."
           ../bazel-bin/external/gazelle+/cmd/gazelle/gazelle_/gazelle .
-          
-          # Build all examples
-          echo "Building all examples..."
           bazel build //...
         env:
           BUILD_WORKSPACE_DIRECTORY: ${{ github.workspace }}/examples

@@ -88,7 +88,7 @@ func generateRulesFromCMakeFile(args language.GenerateArgs, cmakeFilePath string
 				target = &CMakeTarget{Name: targetName, Type: "library"}
 				targets[targetName] = target
 			}
-			target.Type = "library" // Ensure type is library
+			target.Type = "library"               // Ensure type is library
 			for _, srcFile := range cmdArgs[1:] { // Simplification: assumes all following args are sources
 				// Basic check for header/source, could be improved
 				if isHeaderFile(srcFile) {
@@ -235,6 +235,10 @@ func generateRulesFromCMakeFile(args language.GenerateArgs, cmakeFilePath string
 			log.Printf("Skipping rule for target %s as no valid sources/headers were found in the current directory.", cmTarget.Name)
 		}
 	}
+	// Gazelle expects Imports to have the same length as Gen. Populate with nils for now.
+	if len(res.Gen) > 0 && len(res.Imports) == 0 {
+		res.Imports = make([]interface{}, len(res.Gen))
+	}
 	return res
 }
 
@@ -283,5 +287,3 @@ func GenerateRules(args language.GenerateArgs) language.GenerateResult {
 	// Use regex-based parsing (fallback method)
 	return generateRulesFromCMakeFile(args, cmakeFilePath, cfg)
 }
-
-
