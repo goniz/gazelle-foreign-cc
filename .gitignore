@@ -3,3 +3,7 @@ bazel-*
 
 # CMake build directories
 .cmake-build/
+
+# Build artifacts
+gazelle-foreign-cc
+*.exe

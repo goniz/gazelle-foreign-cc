@@ -1,10 +1,19 @@
 load("@rules_go//go:def.bzl", "go_binary")
+load("@gazelle//:def.bzl", "gazelle")
 
+# Test utility for CMake File API
 go_binary(
-    name = "gazelle-foreign-cc",
+    name = "cmake-test-util",
     srcs = ["main.go"],
     deps = [
         "//language",
     ],
+    visibility = ["//visibility:public"],
+)
+
+# Gazelle rule for running the plugin
+gazelle(
+    name = "gazelle",
+    gazelle = "//gazelle:gazelle-foreign-cc",
     visibility = ["//visibility:public"],
 )
