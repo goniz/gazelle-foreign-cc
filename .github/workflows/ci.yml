@@ -23,9 +23,9 @@ jobs:
 
       - name: Verify Bazel module integrity
         run: |
-          bazel mod tidy --check
+          bazel mod tidy
           cd examples
-          bazel mod tidy --check
+          bazel mod tidy
 
       - name: Build gazelle-foreign-cc plugin
         run: bazel build //gazelle:gazelle-foreign-cc
