@@ -1,4 +1,11 @@
+load("@rules_cc//cc:defs.bzl", "cc_binary")
+
 # Simple Hello World example BUILD file
 
 # This BUILD file demonstrates basic C++ targets that gazelle should be able to generate
 # from the CMakeLists.txt file
+
+cc_binary(
+    name = "hello",
+    srcs = ["main.cpp"],
+)
