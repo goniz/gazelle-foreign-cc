@@ -126,6 +126,26 @@ func (l *cmakeLang) Loads() []rule.LoadInfo {
 // in resolve or generate mode.
 func (l *cmakeLang) GenerateRules(args language.GenerateArgs) language.GenerateResult {
 	cfg := gazelle.GetCMakeConfig(args.Config)
+	
+	// Check for cmake directive in the current BUILD file
+	var cmakeSource string
+	if args.File != nil {
+		for _, directive := range args.File.Directives {
+			if directive.Key == "cmake" {
+				cmakeSource = directive.Value
+				log.Printf("Found cmake directive: %s in package %s", cmakeSource, args.Rel)
+				break
+			}
+		}
+	}
+	
+	// If we have a cmake directive pointing to external sources, process that
+	if cmakeSource != "" {
+		log.Printf("cmakeLang.GenerateRules: Processing cmake directive %s for package %s", cmakeSource, args.Rel)
+		return l.generateRulesFromExternalSource(args, cmakeSource)
+	}
+	
+	// Otherwise, look for local CMakeLists.txt
 	cmakeFilePath := filepath.Join(args.Dir, "CMakeLists.txt")
 
 	if _, err := os.Stat(cmakeFilePath); os.IsNotExist(err) {
@@ -147,6 +167,105 @@ func (l *cmakeLang) GenerateRules(args language.GenerateArgs) language.GenerateR
 	}
 
 	return l.generateRulesFromTargets(args, cmakeTargets)
+}
+
+// generateRulesFromExternalSource handles the cmake directive pointing to external sources
+func (l *cmakeLang) generateRulesFromExternalSource(args language.GenerateArgs, sourceLabel string) language.GenerateResult {
+	log.Printf("generateRulesFromExternalSource: Processing external source %s", sourceLabel)
+	
+	// Parse the label to extract repository and target
+	// Expected format: @repo_name//:target_name or @repo_name//path:target_name
+	if !strings.HasPrefix(sourceLabel, "@") {
+		log.Printf("Invalid external source label format: %s. Expected format: @repo//:target", sourceLabel)
+		return language.GenerateResult{}
+	}
+	
+	// For now, we'll implement a basic approach that looks for the external repository
+	// in the Bazel external directory. In a full implementation, this would use
+	// Bazel's repository resolution mechanisms.
+	
+	// Extract repo name (everything between @ and //)
+	parts := strings.Split(sourceLabel, "//")
+	if len(parts) != 2 {
+		log.Printf("Invalid label format: %s. Expected format: @repo//path:target", sourceLabel)
+		return language.GenerateResult{}
+	}
+	
+	repoName := parts[0][1:] // Remove @ prefix
+	
+	// Validate repository name
+	if repoName == "" {
+		log.Printf("Empty repository name in label: %s", sourceLabel)
+		return language.GenerateResult{}
+	}
+	
+	// For this implementation, we'll look for the external repository in common locations
+	// This is a simplified approach - a full implementation would integrate with Bazel's
+	// repository resolution system
+	externalRepoPath := l.findExternalRepo(repoName, args)
+	if externalRepoPath == "" {
+		log.Printf("Could not find external repository %s for label %s", repoName, sourceLabel)
+		return language.GenerateResult{}
+	}
+	
+	log.Printf("Found external repository %s at %s", repoName, externalRepoPath)
+	
+	// Look for CMakeLists.txt in the external repository
+	cmakeFilePath := filepath.Join(externalRepoPath, "CMakeLists.txt")
+	if _, err := os.Stat(cmakeFilePath); os.IsNotExist(err) {
+		log.Printf("No CMakeLists.txt found in external repository %s at %s", repoName, cmakeFilePath)
+		return language.GenerateResult{}
+	}
+	
+	log.Printf("Found CMakeLists.txt in external repository at: %s", cmakeFilePath)
+	
+	// Process the external CMake project
+	cfg := gazelle.GetCMakeConfig(args.Config)
+	buildDir := filepath.Join(externalRepoPath, ".cmake-build")
+	api := NewCMakeFileAPI(externalRepoPath, buildDir, cfg.CMakeExecutable)
+	
+	cmakeTargets, err := api.GenerateFromAPI(args.Rel)
+	if err != nil {
+		log.Printf("CMake File API failed for external source %s: %v. Falling back to regex parsing.", sourceLabel, err)
+		// Create a modified args for the external directory
+		externalArgs := args
+		externalArgs.Dir = externalRepoPath
+		return gazelle.GenerateRules(externalArgs)
+	}
+	
+	log.Printf("Successfully parsed %d CMake targets from external repository %s", len(cmakeTargets), repoName)
+	return l.generateRulesFromTargets(args, cmakeTargets)
+}
+
+// findExternalRepo attempts to locate an external repository
+func (l *cmakeLang) findExternalRepo(repoName string, args language.GenerateArgs) string {
+	// Common locations where Bazel might place external repositories
+	// We need to be more sophisticated about this in a real implementation
+	possiblePaths := []string{
+		// Bazel output base external directory
+		filepath.Join(args.Config.RepoRoot, "bazel-" + filepath.Base(args.Config.RepoRoot), "external", repoName),
+		// Bazel execroot external directory  
+		filepath.Join(args.Config.RepoRoot, "bazel-out", "external", repoName),
+		// Module cache for bzlmod (newer Bazel versions)
+		filepath.Join(args.Config.RepoRoot, "bazel-" + filepath.Base(args.Config.RepoRoot), "external", "_main~"+repoName),
+		// Additional bzlmod patterns
+		filepath.Join(args.Config.RepoRoot, "bazel-" + filepath.Base(args.Config.RepoRoot), "external", "bzlmod~"+repoName),
+		// Local repository pattern for testing
+		filepath.Join(args.Config.RepoRoot, repoName),
+	}
+	
+	log.Printf("Searching for external repository '%s' in %d possible locations", repoName, len(possiblePaths))
+	
+	for i, path := range possiblePaths {
+		log.Printf("  [%d] Checking: %s", i+1, path)
+		if stat, err := os.Stat(path); err == nil && stat.IsDir() {
+			log.Printf("  Found external repository at: %s", path)
+			return path
+		}
+	}
+	
+	log.Printf("Could not find external repository '%s' in any standard location", repoName)
+	return ""
 }
 
 // generateRulesFromTargets converts CMakeTarget objects to Bazel rules

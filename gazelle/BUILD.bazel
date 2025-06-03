@@ -49,11 +49,11 @@ go_library(
     ],
 )
 
-go_binary(
-    name = "gazelle-foreign-cc", # The binary Gazelle will execute
-    srcs = ["main.go"],
-    deps = [
-        "//language",
-    ],
+# Alias to the cmd directory binary for now
+alias(
+    name = "gazelle-foreign-cc",
+    actual = "//cmd/gazelle-foreign-cc:gazelle-foreign-cc",
     visibility = ["//visibility:public"],
 )
+
+

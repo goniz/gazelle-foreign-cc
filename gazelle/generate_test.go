@@ -1,6 +1,7 @@
 package gazelle
 
 import (
+	"os"
 	"path/filepath"
 	"reflect"
 	"sort"
@@ -13,11 +14,28 @@ import (
 )
 
 // Helper function to create a mock language.GenerateArgs
-func createMockGenerateArgs(t *testing.T, relDir string, files []string, otherFiles []string) language.GenerateArgs {
+func createMockGenerateArgs(t *testing.T, relDir string, files []string) language.GenerateArgs {
 	// Find the workspace root.
 	workspaceRoot, err := bazel.Runfile("") // Gets path to the current directory within the runfiles tree
 	if err != nil {
-		t.Fatalf("Could not find workspace root: %v", err)
+		// Fallback for non-Bazel environments (go test)
+		// Find the workspace root by looking for go.mod
+		wd, err := filepath.Abs(".")
+		if err != nil {
+			t.Fatalf("Could not get working directory: %v", err)
+		}
+		// Walk up until we find go.mod
+		for {
+			if _, err := os.Stat(filepath.Join(wd, "go.mod")); err == nil {
+				workspaceRoot = wd
+				break
+			}
+			parent := filepath.Dir(wd)
+			if parent == wd {
+				t.Fatalf("Could not find workspace root (go.mod not found)")
+			}
+			wd = parent
+		}
 	}
 	// Construct the absolute path to the testdata directory
 	absDir := filepath.Join(workspaceRoot, relDir)
@@ -35,7 +53,6 @@ func createMockGenerateArgs(t *testing.T, relDir string, files []string, otherFi
 		Dir:          absDir, // Absolute path to the directory being processed
 		Rel:          filepath.Base(relDir), // Relative path from repo root (or a common root for testdata)
 		RegularFiles: files,
-		OtherFiles:   otherFiles, // e.g., CMakeLists.txt if not a 'RegularFile' in Gazelle's terms for this dir
 		File:         nil,        // Represents the existing BUILD file, nil if generating anew
 	}
 }
@@ -49,8 +66,7 @@ func TestGenerateRules_SimpleCCProject(t *testing.T) {
 
 	args := createMockGenerateArgs(t,
 		projectRelDir,
-		[]string{"main.cc", "lib.cc", "lib.h"}, // Files Gazelle sees in the directory
-		[]string{"CMakeLists.txt"},             // Other files like CMakeLists.txt
+		[]string{"main.cc", "lib.cc", "lib.h", "CMakeLists.txt"}, // Files Gazelle sees in the directory
 	)
 
 	expectedRuleApp := rule.NewRule("cc_binary", "app")
