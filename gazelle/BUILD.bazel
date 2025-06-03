@@ -52,7 +52,7 @@ go_library(
 # Alias to the cmd directory binary for now
 alias(
     name = "gazelle-foreign-cc",
-    actual = "//cmd/gazelle-foreign-cc:cmake-test-util",
+    actual = "//cmd/gazelle-foreign-cc:gazelle-foreign-cc",
     visibility = ["//visibility:public"],
 )
 
