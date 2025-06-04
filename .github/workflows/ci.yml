@@ -37,4 +37,4 @@ jobs:
         run: |
           bazel run //:gazelle
           bazel build //...
-        workdir: ${{ github.workspace }}/examples
+        working-directory: ${{ github.workspace }}/examples
