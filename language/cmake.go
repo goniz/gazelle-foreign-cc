@@ -128,29 +128,22 @@ func (l *cmakeLang) Loads() []rule.LoadInfo {
 func (l *cmakeLang) GenerateRules(args language.GenerateArgs) language.GenerateResult {
 	cfg := gazelle.GetCMakeConfig(args.Config)
 
-	// Check for cmake or cmake_source directive in the current BUILD file
+	// Check for cmake_source directive in the current BUILD file
 	var cmakeSource string
-	var isSourceDirective bool
 	if args.File != nil {
 		for _, directive := range args.File.Directives {
-			if directive.Key == "cmake" {
+			if directive.Key == "cmake_source" {
 				cmakeSource = directive.Value
-				isSourceDirective = false
-				log.Printf("Found cmake directive: %s in package %s", cmakeSource, args.Rel)
-				break
-			} else if directive.Key == "cmake_source" {
-				cmakeSource = directive.Value
-				isSourceDirective = true
 				log.Printf("Found cmake_source directive: %s in package %s", cmakeSource, args.Rel)
 				break
 			}
 		}
 	}
 
-	// If we have a cmake or cmake_source directive pointing to external sources, process that
+	// If we have a cmake_source directive pointing to external sources, process that
 	if cmakeSource != "" {
-		log.Printf("cmakeLang.GenerateRules: Processing cmake directive %s for package %s", cmakeSource, args.Rel)
-		return l.generateRulesFromExternalSource(args, cmakeSource, isSourceDirective)
+		log.Printf("cmakeLang.GenerateRules: Processing cmake_source directive %s for package %s", cmakeSource, args.Rel)
+		return l.generateRulesFromExternalSource(args, cmakeSource)
 	}
 
 	// Otherwise, look for local CMakeLists.txt
@@ -177,43 +170,24 @@ func (l *cmakeLang) GenerateRules(args language.GenerateArgs) language.GenerateR
 	return l.generateRulesFromTargets(args, cmakeTargets)
 }
 
-// generateRulesFromExternalSource handles the cmake directive pointing to external sources
-func (l *cmakeLang) generateRulesFromExternalSource(args language.GenerateArgs, sourceLabel string, isSourceDirective bool) language.GenerateResult {
-	log.Printf("generateRulesFromExternalSource: Processing external source %s (isSourceDirective: %v)", sourceLabel, isSourceDirective)
+// generateRulesFromExternalSource handles the cmake_source directive pointing to external sources
+func (l *cmakeLang) generateRulesFromExternalSource(args language.GenerateArgs, sourceLabel string) language.GenerateResult {
+	log.Printf("generateRulesFromExternalSource: Processing external source %s", sourceLabel)
 
-	var repoName string
-	
 	if !strings.HasPrefix(sourceLabel, "@") {
-		log.Printf("Invalid external source label format: %s. Expected format: @repo or @repo//:target", sourceLabel)
+		log.Printf("Invalid external source label format: %s. Expected format: @repo", sourceLabel)
 		return language.GenerateResult{}
 	}
 
-	if isSourceDirective {
-		// For cmake_source directive, expect simple format: @repo_name
-		repoName = sourceLabel[1:] // Remove @ prefix
-		if repoName == "" {
-			log.Printf("Empty repository name in cmake_source directive: %s", sourceLabel)
-			return language.GenerateResult{}
-		}
-		if strings.Contains(repoName, "/") {
-			log.Printf("Invalid cmake_source format: %s. Expected simple format: @repo", sourceLabel)
-			return language.GenerateResult{}
-		}
-	} else {
-		// For cmake directive, expect format: @repo_name//:target_name or @repo_name//path:target_name
-		parts := strings.Split(sourceLabel, "//")
-		if len(parts) != 2 {
-			log.Printf("Invalid cmake label format: %s. Expected format: @repo//path:target", sourceLabel)
-			return language.GenerateResult{}
-		}
-
-		repoName = parts[0][1:] // Remove @ prefix
-
-		// Validate repository name
-		if repoName == "" {
-			log.Printf("Empty repository name in cmake directive: %s", sourceLabel)
-			return language.GenerateResult{}
-		}
+	// For cmake_source directive, expect simple format: @repo_name
+	repoName := sourceLabel[1:] // Remove @ prefix
+	if repoName == "" {
+		log.Printf("Empty repository name in cmake_source directive: %s", sourceLabel)
+		return language.GenerateResult{}
+	}
+	if strings.Contains(repoName, "/") {
+		log.Printf("Invalid cmake_source format: %s. Expected simple format: @repo", sourceLabel)
+		return language.GenerateResult{}
 	}
 
 	// For this implementation, we'll look for the external repository in common locations
@@ -401,17 +375,17 @@ func (l *cmakeLang) generateRulesFromTargetsWithRepo(args language.GenerateArgs,
 		// Handle include directories
 		if len(cmTarget.IncludeDirectories) > 0 {
 			if externalRepo != "" {
-				// For external repositories, use copts to reference external include directories
-				// This is necessary because the includes attribute works relative to the current package
-				var copts []string
+				// For external repositories, use includes attribute but reference it through the external repo label
+				// This allows Bazel to handle the include paths correctly during build time
+				var includes []string
 				for _, dir := range cmTarget.IncludeDirectories {
+					// Only include relative paths that don't go outside the project
 					if !filepath.IsAbs(dir) && !strings.HasPrefix(dir, "..") {
-						// Add as compiler option with external repository reference
-						copts = append(copts, "-iquote", "external/+_repo_rules2+"+externalRepo+"/"+dir)
+						includes = append(includes, "@"+externalRepo+"//"+dir)
 					}
 				}
-				if len(copts) > 0 {
-					r.SetAttr("copts", copts)
+				if len(includes) > 0 {
+					r.SetAttr("includes", includes)
 				}
 			} else {
 				// For local repositories, use includes attribute as before

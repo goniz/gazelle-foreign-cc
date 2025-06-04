@@ -7,24 +7,6 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/rule"
 )
 
-func TestCMakeDirectiveKnown(t *testing.T) {
-	cfg := NewCMakeConfig()
-	directives := cfg.KnownDirectives()
-	
-	// Check that cmake directive is in known directives
-	found := false
-	for _, d := range directives {
-		if d == "cmake" {
-			found = true
-			break
-		}
-	}
-	
-	if !found {
-		t.Error("cmake directive not found in KnownDirectives")
-	}
-}
-
 func TestCMakeSourceDirectiveKnown(t *testing.T) {
 	cfg := NewCMakeConfig()
 	directives := cfg.KnownDirectives()

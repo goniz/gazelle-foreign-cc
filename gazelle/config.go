@@ -18,7 +18,6 @@ type CMakeConfig struct {
 // Constants for directive names
 const (
 	cmakeExecutableDirective = "cmake_executable"
-	cmakeDirective          = "cmake"
 	cmakeSourceDirective    = "cmake_source"
 	// Define other directive names here
 )
@@ -52,7 +51,6 @@ func (cfg *CMakeConfig) CheckFlags(fs *flag.FlagSet, c *config.Config) error {
 func (cfg *CMakeConfig) KnownDirectives() []string {
 	return []string{
 		cmakeExecutableDirective,
-		cmakeDirective,
 		cmakeSourceDirective,
 		// Add other known directives here
 	}
@@ -71,9 +69,6 @@ func (cfg *CMakeConfig) Configure(c *config.Config, rel string, f *rule.File) {
 		case cmakeExecutableDirective:
 			cfg.CMakeExecutable = directive.Value
 			log.Printf("Configure: Set CMake executable to %s from directive in %s", cfg.CMakeExecutable, rel)
-		case cmakeDirective:
-			// The cmake directive is handled per-package in GenerateRules, not globally
-			log.Printf("Configure: Found cmake directive %s in %s (will be processed per-package)", directive.Value, rel)
 		case cmakeSourceDirective:
 			// The cmake_source directive is handled per-package in GenerateRules, not globally
 			log.Printf("Configure: Found cmake_source directive %s in %s (will be processed per-package)", directive.Value, rel)
