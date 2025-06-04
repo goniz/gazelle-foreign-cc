@@ -27,11 +27,11 @@ jobs:
           cd examples
           bazel mod tidy
 
-      - name: Build gazelle-foreign-cc plugin
-        run: bazel build //gazelle:gazelle-foreign-cc
-
       - name: Run Go tests
         run: bazel test //...
+
+      - name: Build gazelle-foreign-cc plugin
+        run: bazel build //cmd/gazelle-foreign-cc:gazelle
 
       - name: Generate and build examples
         run: |
