@@ -1,2 +1,1 @@
-startup --client_debug --local_startup_timeout_secs=30
-common --vendor_dir=vendor
+common --vendor_dir=vendor --nofetch
