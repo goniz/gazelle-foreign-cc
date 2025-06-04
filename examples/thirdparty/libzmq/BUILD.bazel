@@ -1,0 +1,5 @@
+# gazelle:cmake_source @libzmq
+
+# This BUILD.bazel file demonstrates the cmake_source directive usage.
+# When gazelle runs, it will populate this file with cc_library and cc_binary 
+# rules generated from the CMakeLists.txt found in the @libzmq external repository.

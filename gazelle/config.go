@@ -19,6 +19,7 @@ type CMakeConfig struct {
 const (
 	cmakeExecutableDirective = "cmake_executable"
 	cmakeDirective          = "cmake"
+	cmakeSourceDirective    = "cmake_source"
 	// Define other directive names here
 )
 
@@ -52,6 +53,7 @@ func (cfg *CMakeConfig) KnownDirectives() []string {
 	return []string{
 		cmakeExecutableDirective,
 		cmakeDirective,
+		cmakeSourceDirective,
 		// Add other known directives here
 	}
 }
@@ -72,6 +74,9 @@ func (cfg *CMakeConfig) Configure(c *config.Config, rel string, f *rule.File) {
 		case cmakeDirective:
 			// The cmake directive is handled per-package in GenerateRules, not globally
 			log.Printf("Configure: Found cmake directive %s in %s (will be processed per-package)", directive.Value, rel)
+		case cmakeSourceDirective:
+			// The cmake_source directive is handled per-package in GenerateRules, not globally
+			log.Printf("Configure: Found cmake_source directive %s in %s (will be processed per-package)", directive.Value, rel)
 		// Add cases for other directives here
 		default:
 			// Gazelle will warn about unknown directives if not in KnownDirectives()

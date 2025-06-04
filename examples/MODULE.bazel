@@ -19,6 +19,7 @@ bazel_dep(name = "bazel_skylib", version = "1.7.1")
 
 # Register libzmq repository using use_repo_rule
 http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+local_repository = use_repo_rule("@bazel_tools//tools/build_defs/repo:local.bzl", "local_repository")
 http_archive(
     name = "libzmq",
     url = "https://github.com/zeromq/libzmq/releases/download/v4.3.5/zeromq-4.3.5.tar.gz",
@@ -43,4 +44,10 @@ cc_library(
     visibility = ["//visibility:public"],
 )
 """,
+)
+
+# Add a local test repository for testing cmake_source directive
+local_repository(
+    name = "simple_cmake_lib",
+    path = "testdata/simple_lib",
 )

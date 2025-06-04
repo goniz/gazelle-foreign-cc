@@ -4,6 +4,7 @@ import (
 	"flag"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -127,22 +128,29 @@ func (l *cmakeLang) Loads() []rule.LoadInfo {
 func (l *cmakeLang) GenerateRules(args language.GenerateArgs) language.GenerateResult {
 	cfg := gazelle.GetCMakeConfig(args.Config)
 
-	// Check for cmake directive in the current BUILD file
+	// Check for cmake or cmake_source directive in the current BUILD file
 	var cmakeSource string
+	var isSourceDirective bool
 	if args.File != nil {
 		for _, directive := range args.File.Directives {
 			if directive.Key == "cmake" {
 				cmakeSource = directive.Value
+				isSourceDirective = false
 				log.Printf("Found cmake directive: %s in package %s", cmakeSource, args.Rel)
+				break
+			} else if directive.Key == "cmake_source" {
+				cmakeSource = directive.Value
+				isSourceDirective = true
+				log.Printf("Found cmake_source directive: %s in package %s", cmakeSource, args.Rel)
 				break
 			}
 		}
 	}
 
-	// If we have a cmake directive pointing to external sources, process that
+	// If we have a cmake or cmake_source directive pointing to external sources, process that
 	if cmakeSource != "" {
 		log.Printf("cmakeLang.GenerateRules: Processing cmake directive %s for package %s", cmakeSource, args.Rel)
-		return l.generateRulesFromExternalSource(args, cmakeSource)
+		return l.generateRulesFromExternalSource(args, cmakeSource, isSourceDirective)
 	}
 
 	// Otherwise, look for local CMakeLists.txt
@@ -170,33 +178,42 @@ func (l *cmakeLang) GenerateRules(args language.GenerateArgs) language.GenerateR
 }
 
 // generateRulesFromExternalSource handles the cmake directive pointing to external sources
-func (l *cmakeLang) generateRulesFromExternalSource(args language.GenerateArgs, sourceLabel string) language.GenerateResult {
-	log.Printf("generateRulesFromExternalSource: Processing external source %s", sourceLabel)
+func (l *cmakeLang) generateRulesFromExternalSource(args language.GenerateArgs, sourceLabel string, isSourceDirective bool) language.GenerateResult {
+	log.Printf("generateRulesFromExternalSource: Processing external source %s (isSourceDirective: %v)", sourceLabel, isSourceDirective)
 
-	// Parse the label to extract repository and target
-	// Expected format: @repo_name//:target_name or @repo_name//path:target_name
+	var repoName string
+	
 	if !strings.HasPrefix(sourceLabel, "@") {
-		log.Printf("Invalid external source label format: %s. Expected format: @repo//:target", sourceLabel)
+		log.Printf("Invalid external source label format: %s. Expected format: @repo or @repo//:target", sourceLabel)
 		return language.GenerateResult{}
 	}
 
-	// For now, we'll implement a basic approach that looks for the external repository
-	// in the Bazel external directory. In a full implementation, this would use
-	// Bazel's repository resolution mechanisms.
+	if isSourceDirective {
+		// For cmake_source directive, expect simple format: @repo_name
+		repoName = sourceLabel[1:] // Remove @ prefix
+		if repoName == "" {
+			log.Printf("Empty repository name in cmake_source directive: %s", sourceLabel)
+			return language.GenerateResult{}
+		}
+		if strings.Contains(repoName, "/") {
+			log.Printf("Invalid cmake_source format: %s. Expected simple format: @repo", sourceLabel)
+			return language.GenerateResult{}
+		}
+	} else {
+		// For cmake directive, expect format: @repo_name//:target_name or @repo_name//path:target_name
+		parts := strings.Split(sourceLabel, "//")
+		if len(parts) != 2 {
+			log.Printf("Invalid cmake label format: %s. Expected format: @repo//path:target", sourceLabel)
+			return language.GenerateResult{}
+		}
 
-	// Extract repo name (everything between @ and //)
-	parts := strings.Split(sourceLabel, "//")
-	if len(parts) != 2 {
-		log.Printf("Invalid label format: %s. Expected format: @repo//path:target", sourceLabel)
-		return language.GenerateResult{}
-	}
+		repoName = parts[0][1:] // Remove @ prefix
 
-	repoName := parts[0][1:] // Remove @ prefix
-
-	// Validate repository name
-	if repoName == "" {
-		log.Printf("Empty repository name in label: %s", sourceLabel)
-		return language.GenerateResult{}
+		// Validate repository name
+		if repoName == "" {
+			log.Printf("Empty repository name in cmake directive: %s", sourceLabel)
+			return language.GenerateResult{}
+		}
 	}
 
 	// For this implementation, we'll look for the external repository in common locations
@@ -262,6 +279,50 @@ func (l *cmakeLang) findExternalRepo(repoName string, args language.GenerateArgs
 			log.Printf("  Found external repository at: %s", path)
 			return path
 		}
+	}
+
+	// Additional search in bazel output base for bzlmod repositories
+	// This is a more comprehensive approach for finding bzlmod repos
+	log.Printf("Attempting comprehensive search for repository '%s'", repoName)
+	outputBase := strings.TrimSpace(os.Getenv("BAZEL_OUTPUT_BASE"))
+	log.Printf("BAZEL_OUTPUT_BASE environment variable: '%s'", outputBase)
+	if outputBase == "" {
+		// Try to get output base from bazel info (fallback)
+		log.Printf("Trying to get output base from bazel info command")
+		cmd := exec.Command("bazel", "info", "output_base")
+		cmd.Dir = args.Config.RepoRoot
+		if output, err := cmd.Output(); err == nil {
+			outputBase = strings.TrimSpace(string(output))
+			log.Printf("Got output base from bazel info: '%s'", outputBase)
+		} else {
+			log.Printf("Failed to get output base from bazel info: %v", err)
+		}
+	}
+	
+	if outputBase != "" {
+		// Search for bzlmod repository patterns in the actual bazel output base
+		externalDir := filepath.Join(outputBase, "external")
+		log.Printf("Searching in external directory: %s", externalDir)
+		if entries, err := os.ReadDir(externalDir); err == nil {
+			log.Printf("Found %d entries in external directory", len(entries))
+			for _, entry := range entries {
+				if entry.IsDir() {
+					entryName := entry.Name()
+					log.Printf("  Checking entry: %s (contains '%s'? %v)", entryName, repoName, strings.Contains(entryName, repoName))
+					// Check various patterns that might match our repository
+					if strings.Contains(entryName, repoName) {
+						candidate := filepath.Join(externalDir, entryName)
+						log.Printf("  Found potential bzlmod repository at: %s", candidate)
+						return candidate
+					}
+				}
+			}
+			log.Printf("No matching repositories found in external directory")
+		} else {
+			log.Printf("Failed to read external directory %s: %v", externalDir, err)
+		}
+	} else {
+		log.Printf("No output base available for comprehensive search")
 	}
 
 	log.Printf("Could not find external repository '%s' in any standard location", repoName)
