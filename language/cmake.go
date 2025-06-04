@@ -250,10 +250,6 @@ func (l *cmakeLang) findExternalRepo(repoName string, args language.GenerateArgs
 		filepath.Join(args.Config.RepoRoot, "bazel-out", "external", repoName),
 		// Module cache for bzlmod (newer Bazel versions)
 		filepath.Join(args.Config.RepoRoot, "bazel-"+filepath.Base(args.Config.RepoRoot), "external", "_main~"+repoName),
-		// Additional bzlmod patterns
-		filepath.Join(args.Config.RepoRoot, "bazel-"+filepath.Base(args.Config.RepoRoot), "external", "bzlmod~"+repoName),
-		// New bzlmod pattern with repo_rules prefix (bzlmod 6.0+)
-		filepath.Join(args.Config.RepoRoot, "bazel-"+filepath.Base(args.Config.RepoRoot), "external", "+_repo_rules+"+repoName),
 		// Local repository pattern for testing
 		filepath.Join(args.Config.RepoRoot, repoName),
 	}
@@ -348,7 +344,7 @@ func (l *cmakeLang) findRepoViaRunfiles(repoName string) string {
 		bazelCacheRoot := parts[0] // This should be like /home/runner/.bazel
 		
 		// Try the new bzlmod pattern
-		repoPattern := "+_repo_rules+" + repoName
+		repoPattern := "+" + repoName
 		candidate := filepath.Join(bazelCacheRoot, "external", repoPattern)
 		log.Printf("  Checking runfiles-derived path: %s", candidate)
 		if stat, err := os.Stat(candidate); err == nil && stat.IsDir() {
@@ -359,7 +355,7 @@ func (l *cmakeLang) findRepoViaRunfiles(repoName string) string {
 		// Try other patterns
 		otherPatterns := []string{
 			repoName,
-			"_main~" + repoName,
+			"_main+" + repoName,
 			"bzlmod~" + repoName,
 		}
 		
