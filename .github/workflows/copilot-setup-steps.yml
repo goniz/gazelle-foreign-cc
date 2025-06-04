@@ -33,7 +33,7 @@ jobs:
 
       - name: Bazel Vendor
         run: |
-          bazel vendor --vendor_dir=vendor
+          bazel vendor --vendor_dir=vendor //...:all
           echo "common --vendor_dir=vendor --nofetch" > .bazelrc
 
       - name: Verify setup
