@@ -3,3 +3,11 @@ filegroup(
     srcs = glob(["**/*"]),
     visibility = ["//visibility:public"],
 )
+
+# Export individual source files for consumption by gazelle-generated rules
+exports_files([
+    "src/main.cpp",
+    "src/simple.cpp", 
+    "src/utils.cpp",
+    "include/simple.h",
+], visibility = ["//visibility:public"])
