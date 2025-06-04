@@ -1,1 +1,1 @@
-common --vendor_dir=vendor
+common --vendor_dir=vendor --nofetch
