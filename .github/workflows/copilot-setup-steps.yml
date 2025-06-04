@@ -31,11 +31,6 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y cmake
 
-      - name: Bazel Vendor
-        run: |
-          bazel vendor --vendor_dir=vendor //...:all
-          echo "common --vendor_dir=vendor --nofetch" > .bazelrc
-
       - name: Verify setup
         run: |
           echo "Go version: $(go version)"
