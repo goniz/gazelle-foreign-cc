@@ -13,6 +13,7 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/language"
 	"github.com/bazelbuild/bazel-gazelle/repo"
 	"github.com/bazelbuild/bazel-gazelle/resolve"
+	"github.com/bazelbuild/rules_go/go/tools/bazel"
 	"github.com/bazelbuild/bazel-gazelle/rule"
 	"github.com/goniz/gazelle-foreign-cc/gazelle"
 )
@@ -235,6 +236,11 @@ func (l *cmakeLang) generateRulesFromExternalSource(args language.GenerateArgs, 
 
 // findExternalRepo attempts to locate an external repository
 func (l *cmakeLang) findExternalRepo(repoName string, args language.GenerateArgs) string {
+	// Try runfiles-based discovery first (most reliable in Bazel environment)
+	if repoPath := l.findRepoViaRunfiles(repoName); repoPath != "" {
+		return repoPath
+	}
+
 	// Common locations where Bazel might place external repositories
 	// We need to be more sophisticated about this in a real implementation
 	possiblePaths := []string{
@@ -246,6 +252,8 @@ func (l *cmakeLang) findExternalRepo(repoName string, args language.GenerateArgs
 		filepath.Join(args.Config.RepoRoot, "bazel-"+filepath.Base(args.Config.RepoRoot), "external", "_main~"+repoName),
 		// Additional bzlmod patterns
 		filepath.Join(args.Config.RepoRoot, "bazel-"+filepath.Base(args.Config.RepoRoot), "external", "bzlmod~"+repoName),
+		// New bzlmod pattern with repo_rules prefix (bzlmod 6.0+)
+		filepath.Join(args.Config.RepoRoot, "bazel-"+filepath.Base(args.Config.RepoRoot), "external", "+_repo_rules+"+repoName),
 		// Local repository pattern for testing
 		filepath.Join(args.Config.RepoRoot, repoName),
 	}
@@ -318,6 +326,57 @@ func (l *cmakeLang) findExternalRepo(repoName string, args language.GenerateArgs
 	return ""
 }
 
+// findRepoViaRunfiles uses Bazel runfiles to locate external repositories
+func (l *cmakeLang) findRepoViaRunfiles(repoName string) string {
+	log.Printf("Attempting to find repository '%s' via runfiles", repoName)
+	
+	// Try to get the workspace root using runfiles
+	workspaceRoot, err := bazel.Runfile("")
+	if err != nil {
+		log.Printf("  Failed to get runfiles workspace root: %v", err)
+		return ""
+	}
+	log.Printf("  Runfiles workspace root: %s", workspaceRoot)
+	
+	// From the runfiles workspace root, we can derive the output base
+	// The runfiles path is typically like: /home/runner/.bazel/execroot/_main/bazel-out/k8-fastbuild/bin/gazelle.runfiles/_main
+	// We need to get to: /home/runner/.bazel/external/+_repo_rules+libzmq
+	
+	// Extract the bazel cache root path
+	parts := strings.Split(workspaceRoot, "/execroot/")
+	if len(parts) >= 2 {
+		bazelCacheRoot := parts[0] // This should be like /home/runner/.bazel
+		
+		// Try the new bzlmod pattern
+		repoPattern := "+_repo_rules+" + repoName
+		candidate := filepath.Join(bazelCacheRoot, "external", repoPattern)
+		log.Printf("  Checking runfiles-derived path: %s", candidate)
+		if stat, err := os.Stat(candidate); err == nil && stat.IsDir() {
+			log.Printf("  Found repository via runfiles at: %s", candidate)
+			return candidate
+		}
+		
+		// Try other patterns
+		otherPatterns := []string{
+			repoName,
+			"_main~" + repoName,
+			"bzlmod~" + repoName,
+		}
+		
+		for _, pattern := range otherPatterns {
+			candidate := filepath.Join(bazelCacheRoot, "external", pattern)
+			log.Printf("  Checking runfiles-derived path: %s", candidate)
+			if stat, err := os.Stat(candidate); err == nil && stat.IsDir() {
+				log.Printf("  Found repository via runfiles at: %s", candidate)
+				return candidate
+			}
+		}
+	}
+	
+	log.Printf("  Could not find repository '%s' via runfiles", repoName)
+	return ""
+}
+
 // generateRulesFromTargets converts CMakeTarget objects to Bazel rules
 func (l *cmakeLang) generateRulesFromTargets(args language.GenerateArgs, cmakeTargets []*gazelle.CMakeTarget) language.GenerateResult {
 	return l.generateRulesFromTargetsWithRepo(args, cmakeTargets, "")
@@ -368,7 +427,8 @@ func (l *cmakeLang) generateRulesFromTargetsWithRepo(args language.GenerateArgs,
 		if len(finalSrcs) > 0 {
 			r.SetAttr("srcs", finalSrcs)
 		}
-		if len(finalHdrs) > 0 {
+		// Only set hdrs for cc_library targets, not cc_binary
+		if len(finalHdrs) > 0 && cmTarget.Type == "library" {
 			r.SetAttr("hdrs", finalHdrs)
 		}
 

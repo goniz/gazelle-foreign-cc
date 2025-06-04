@@ -17,6 +17,7 @@ go_library(
         "@gazelle//repo",
         "@gazelle//resolve",
         "@gazelle//rule",
+        "@rules_go//go/tools/bazel",
     ],
 )
 
