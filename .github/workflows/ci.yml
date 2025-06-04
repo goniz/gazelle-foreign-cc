@@ -35,12 +35,6 @@ jobs:
 
       - name: Generate and build examples
         run: |
-          PLUGIN_PATH_DIR=$(mktemp -d)
-          cp bazel-bin/gazelle/gazelle-foreign-cc_/gazelle-foreign-cc $PLUGIN_PATH_DIR/gazelle-cmake
-          export PATH=$PLUGIN_PATH_DIR:$PATH
-          bazel build @gazelle//cmd/gazelle
-          cd examples
-          ../bazel-bin/external/gazelle+/cmd/gazelle/gazelle_/gazelle .
+          bazel run //:gazelle
           bazel build //...
-        env:
-          BUILD_WORKSPACE_DIRECTORY: ${{ github.workspace }}/examples
+        working-directory: ${{ github.workspace }}/examples
