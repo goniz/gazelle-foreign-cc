@@ -5,4 +5,4 @@ filegroup(
 	srcs = glob(["**"]),
 )
 
-exports_files(glob(["**"])
+exports_files(glob(["**"]))
