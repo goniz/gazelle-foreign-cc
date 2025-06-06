@@ -6,6 +6,56 @@ load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
 # When gazelle runs, it will populate this file with cc_library and cc_binary
 # rules generated from the CMakeLists.txt found in the @libzmq external repository.
 
+cc_binary(
+    name = "test_address_tipc",
+    srcs = ["@libzmq//:tests/test_address_tipc.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "test_sub_forward_tipc",
+    srcs = ["@libzmq//:tests/test_sub_forward_tipc.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "test_proxy_single_socket",
+    srcs = ["@libzmq//:tests/test_proxy_single_socket.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "test_use_fd",
+    srcs = ["@libzmq//:tests/test_use_fd.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "test_xpub_topic",
+    srcs = ["@libzmq//:tests/test_xpub_topic.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
 cc_library(
     name = "objects",
     srcs = [
@@ -267,67 +317,6 @@ cc_library(
 )
 
 cc_binary(
-    name = "test_rebind_ipc",
-    srcs = ["@libzmq//:tests/test_rebind_ipc.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "test_xpub_manual",
-    srcs = ["@libzmq//:tests/test_xpub_manual.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "unittest_mtrie",
-    srcs = ["@libzmq//:unittests/unittest_mtrie.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-        "@libzmq//src",
-    ],
-)
-
-cc_binary(
-    name = "test_msg_ffn",
-    srcs = ["@libzmq//:tests/test_msg_ffn.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "test_socket_null",
-    srcs = ["@libzmq//:tests/test_socket_null.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "test_xpub_verbose",
-    srcs = ["@libzmq//:tests/test_xpub_verbose.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
     name = "test_capabilities",
     srcs = ["@libzmq//:tests/test_capabilities.cpp"],
     includes = [
@@ -338,8 +327,8 @@ cc_binary(
 )
 
 cc_binary(
-    name = "test_conflate",
-    srcs = ["@libzmq//:tests/test_conflate.cpp"],
+    name = "test_many_sockets",
+    srcs = ["@libzmq//:tests/test_many_sockets.cpp"],
     includes = [
         "@libzmq//.cmake-build",
         "@libzmq//external/unity",
@@ -348,8 +337,8 @@ cc_binary(
 )
 
 cc_binary(
-    name = "test_invalid_rep",
-    srcs = ["@libzmq//:tests/test_invalid_rep.cpp"],
+    name = "test_base85",
+    srcs = ["@libzmq//:tests/test_base85.cpp"],
     includes = [
         "@libzmq//.cmake-build",
         "@libzmq//external/unity",
@@ -358,320 +347,8 @@ cc_binary(
 )
 
 cc_binary(
-    name = "test_stream_disconnect",
-    srcs = ["@libzmq//:tests/test_stream_disconnect.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "test_atomics",
-    srcs = ["@libzmq//:tests/test_atomics.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "test_immediate",
-    srcs = ["@libzmq//:tests/test_immediate.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "test_pub_invert_matching",
-    srcs = ["@libzmq//:tests/test_pub_invert_matching.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "test_reconnect_ivl",
-    srcs = ["@libzmq//:tests/test_reconnect_ivl.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "test_address_tipc",
-    srcs = ["@libzmq//:tests/test_address_tipc.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "test_connect_delay_tipc",
-    srcs = ["@libzmq//:tests/test_connect_delay_tipc.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "test_security_gssapi",
-    srcs = ["@libzmq//:tests/test_security_gssapi.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "test_stream_exceeds_buffer",
-    srcs = ["@libzmq//:tests/test_stream_exceeds_buffer.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "test_pair_inproc",
-    srcs = ["@libzmq//:tests/test_pair_inproc.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "test_sockopt_hwm",
-    srcs = ["@libzmq//:tests/test_sockopt_hwm.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "test_filter_ipc",
-    srcs = ["@libzmq//:tests/test_filter_ipc.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_library(
-    name = "testutil",
-    srcs = [
-        "@libzmq//:tests/testutil.cpp",
-        "@libzmq//:tests/testutil_monitoring.cpp",
-        "@libzmq//:tests/testutil_security.cpp",
-        "@libzmq//:tests/testutil_unity.cpp",
-    ],
-    hdrs = [
-        "@libzmq//:tests/testutil.hpp",
-        "@libzmq//:tests/testutil_monitoring.hpp",
-        "@libzmq//:tests/testutil_security.hpp",
-        "@libzmq//:tests/testutil_unity.hpp",
-    ],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "test_reqrep_inproc",
-    srcs = ["@libzmq//:tests/test_reqrep_inproc.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "test_tcp_accept_filter",
-    srcs = ["@libzmq//:tests/test_tcp_accept_filter.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "test_heartbeats",
-    srcs = ["@libzmq//:tests/test_heartbeats.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "test_msg_flags",
-    srcs = ["@libzmq//:tests/test_msg_flags.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "test_spec_rep",
-    srcs = ["@libzmq//:tests/test_spec_rep.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "test_use_fd",
-    srcs = ["@libzmq//:tests/test_use_fd.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "test_xpub_welcome_msg",
-    srcs = ["@libzmq//:tests/test_xpub_welcome_msg.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "test_bind_fuzzer",
-    srcs = ["@libzmq//:tests/test_bind_fuzzer.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "test_issue_566",
-    srcs = ["@libzmq//:tests/test_issue_566.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "test_router_mandatory_hwm",
-    srcs = ["@libzmq//:tests/test_router_mandatory_hwm.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "test_ipc_wildcard",
-    srcs = ["@libzmq//:tests/test_ipc_wildcard.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "test_pair_tcp",
-    srcs = ["@libzmq//:tests/test_pair_tcp.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "test_probe_router",
-    srcs = ["@libzmq//:tests/test_probe_router.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "test_srcfd",
-    srcs = ["@libzmq//:tests/test_srcfd.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "test_proxy_hwm",
-    srcs = ["@libzmq//:tests/test_proxy_hwm.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "test_proxy_terminate",
-    srcs = ["@libzmq//:tests/test_proxy_terminate.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "unittest_ypipe",
-    srcs = ["@libzmq//:unittests/unittest_ypipe.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-        "@libzmq//src",
-    ],
-)
-
-cc_binary(
-    name = "test_ctx_options",
-    srcs = ["@libzmq//:tests/test_ctx_options.cpp"],
+    name = "test_diffserv",
+    srcs = ["@libzmq//:tests/test_diffserv.cpp"],
     includes = [
         "@libzmq//.cmake-build",
         "@libzmq//external/unity",
@@ -680,119 +357,8 @@ cc_binary(
 )
 
 cc_binary(
-    name = "test_reqrep_tipc",
-    srcs = ["@libzmq//:tests/test_reqrep_tipc.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "test_xpub_nodrop",
-    srcs = ["@libzmq//:tests/test_xpub_nodrop.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "test_security_null",
-    srcs = ["@libzmq//:tests/test_security_null.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "test_sub_forward_tipc",
-    srcs = ["@libzmq//:tests/test_sub_forward_tipc.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "test_zmq_poll_fd",
-    srcs = ["@libzmq//:tests/test_zmq_poll_fd.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "unittest_udp_address",
-    srcs = ["@libzmq//:unittests/unittest_udp_address.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-        "@libzmq//src",
-    ],
-)
-
-cc_binary(
-    name = "test_ancillaries",
-    srcs = ["@libzmq//:tests/test_ancillaries.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "test_proxy_single_socket",
-    srcs = ["@libzmq//:tests/test_proxy_single_socket.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "test_router_mandatory_tipc",
-    srcs = ["@libzmq//:tests/test_router_mandatory_tipc.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "test_req_relaxed",
-    srcs = ["@libzmq//:tests/test_req_relaxed.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "test_spec_router",
-    srcs = ["@libzmq//:tests/test_spec_router.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "test_connect_rid",
-    srcs = ["@libzmq//:tests/test_connect_rid.cpp"],
+    name = "test_ctx_options",
+    srcs = ["@libzmq//:tests/test_ctx_options.cpp"],
     includes = [
         "@libzmq//.cmake-build",
         "@libzmq//external/unity",
@@ -813,56 +379,6 @@ cc_binary(
 cc_binary(
     name = "test_security_no_zap_handler",
     srcs = ["@libzmq//:tests/test_security_no_zap_handler.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "test_security_plain",
-    srcs = ["@libzmq//:tests/test_security_plain.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "test_system",
-    srcs = ["@libzmq//:tests/test_system.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "test_ctx_destroy",
-    srcs = ["@libzmq//:tests/test_ctx_destroy.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "test_reqrep_device",
-    srcs = ["@libzmq//:tests/test_reqrep_device.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "test_spec_dealer",
-    srcs = ["@libzmq//:tests/test_spec_dealer.cpp"],
     includes = [
         "@libzmq//.cmake-build",
         "@libzmq//external/unity",
@@ -892,144 +408,13 @@ cc_library(
 )
 
 cc_binary(
-    name = "unittest_curve_encoding",
-    srcs = ["@libzmq//:unittests/unittest_curve_encoding.cpp"],
+    name = "unittest_mtrie",
+    srcs = ["@libzmq//:unittests/unittest_mtrie.cpp"],
     includes = [
         "@libzmq//.cmake-build",
         "@libzmq//external/unity",
         "@libzmq//include",
         "@libzmq//src",
-    ],
-)
-
-cc_binary(
-    name = "benchmark_radix_tree",
-    srcs = ["@libzmq//:perf/benchmark_radix_tree.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//include",
-        "@libzmq//src",
-    ],
-)
-
-cc_binary(
-    name = "test_bind_after_connect_tcp",
-    srcs = ["@libzmq//:tests/test_bind_after_connect_tcp.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "test_hwm",
-    srcs = ["@libzmq//:tests/test_hwm.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "test_last_endpoint",
-    srcs = ["@libzmq//:tests/test_last_endpoint.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "test_monitor",
-    srcs = ["@libzmq//:tests/test_monitor.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "test_shutdown_stress_tipc",
-    srcs = ["@libzmq//:tests/test_shutdown_stress_tipc.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "unittest_poller",
-    srcs = ["@libzmq//:unittests/unittest_poller.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-        "@libzmq//src",
-    ],
-)
-
-cc_binary(
-    name = "test_connect_null_fuzzer",
-    srcs = ["@libzmq//:tests/test_connect_null_fuzzer.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "test_fork",
-    srcs = ["@libzmq//:tests/test_fork.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "test_reconnect_options",
-    srcs = ["@libzmq//:tests/test_reconnect_options.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "test_reqrep_ipc",
-    srcs = ["@libzmq//:tests/test_reqrep_ipc.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "test_security_zap",
-    srcs = ["@libzmq//:tests/test_security_zap.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "test_stream_timeout",
-    srcs = ["@libzmq//:tests/test_stream_timeout.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
     ],
 )
 
@@ -1044,8 +429,8 @@ cc_binary(
 )
 
 cc_binary(
-    name = "test_spec_pushpull",
-    srcs = ["@libzmq//:tests/test_spec_pushpull.cpp"],
+    name = "test_proxy",
+    srcs = ["@libzmq//:tests/test_proxy.cpp"],
     includes = [
         "@libzmq//.cmake-build",
         "@libzmq//external/unity",
@@ -1054,8 +439,8 @@ cc_binary(
 )
 
 cc_binary(
-    name = "test_abstract_ipc",
-    srcs = ["@libzmq//:tests/test_abstract_ipc.cpp"],
+    name = "test_spec_dealer",
+    srcs = ["@libzmq//:tests/test_spec_dealer.cpp"],
     includes = [
         "@libzmq//.cmake-build",
         "@libzmq//external/unity",
@@ -1064,199 +449,8 @@ cc_binary(
 )
 
 cc_binary(
-    name = "test_iov",
-    srcs = ["@libzmq//:tests/test_iov.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "test_pair_ipc",
-    srcs = ["@libzmq//:tests/test_pair_ipc.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "test_base85",
-    srcs = ["@libzmq//:tests/test_base85.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "test_connect_fuzzer",
-    srcs = ["@libzmq//:tests/test_connect_fuzzer.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "test_diffserv",
-    srcs = ["@libzmq//:tests/test_diffserv.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "test_req_correlate",
-    srcs = ["@libzmq//:tests/test_req_correlate.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "test_stream_empty",
-    srcs = ["@libzmq//:tests/test_stream_empty.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "unittest_ip_resolver",
-    srcs = ["@libzmq//:unittests/unittest_ip_resolver.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-        "@libzmq//src",
-    ],
-)
-
-cc_binary(
-    name = "test_setsockopt",
-    srcs = ["@libzmq//:tests/test_setsockopt.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "test_sodium",
-    srcs = ["@libzmq//:tests/test_sodium.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "test_reqrep_device_tipc",
-    srcs = ["@libzmq//:tests/test_reqrep_device_tipc.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "test_router_handover",
-    srcs = ["@libzmq//:tests/test_router_handover.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "test_term_endpoint",
-    srcs = ["@libzmq//:tests/test_term_endpoint.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "test_router_mandatory",
-    srcs = ["@libzmq//:tests/test_router_mandatory.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "test_spec_req",
-    srcs = ["@libzmq//:tests/test_spec_req.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "test_sub_forward",
-    srcs = ["@libzmq//:tests/test_sub_forward.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "test_unbind_wildcard",
-    srcs = ["@libzmq//:tests/test_unbind_wildcard.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "test_bind_null_fuzzer",
-    srcs = ["@libzmq//:tests/test_bind_null_fuzzer.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "test_getsockopt_memset",
-    srcs = ["@libzmq//:tests/test_getsockopt_memset.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "test_inproc_connect",
-    srcs = ["@libzmq//:tests/test_inproc_connect.cpp"],
+    name = "test_bind_after_connect_tcp",
+    srcs = ["@libzmq//:tests/test_bind_after_connect_tcp.cpp"],
     includes = [
         "@libzmq//.cmake-build",
         "@libzmq//external/unity",
@@ -1275,8 +469,8 @@ cc_binary(
 )
 
 cc_binary(
-    name = "test_proxy_steerable",
-    srcs = ["@libzmq//:tests/test_proxy_steerable.cpp"],
+    name = "test_router_mandatory_tipc",
+    srcs = ["@libzmq//:tests/test_router_mandatory_tipc.cpp"],
     includes = [
         "@libzmq//.cmake-build",
         "@libzmq//external/unity",
@@ -1285,8 +479,8 @@ cc_binary(
 )
 
 cc_binary(
-    name = "test_socks",
-    srcs = ["@libzmq//:tests/test_socks.cpp"],
+    name = "test_req_relaxed",
+    srcs = ["@libzmq//:tests/test_req_relaxed.cpp"],
     includes = [
         "@libzmq//.cmake-build",
         "@libzmq//external/unity",
@@ -1295,18 +489,8 @@ cc_binary(
 )
 
 cc_binary(
-    name = "test_timeo",
-    srcs = ["@libzmq//:tests/test_timeo.cpp"],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//external/unity",
-        "@libzmq//include",
-    ],
-)
-
-cc_binary(
-    name = "test_pair_tipc",
-    srcs = ["@libzmq//:tests/test_pair_tipc.cpp"],
+    name = "test_reqrep_device",
+    srcs = ["@libzmq//:tests/test_reqrep_device.cpp"],
     includes = [
         "@libzmq//.cmake-build",
         "@libzmq//external/unity",
@@ -1317,6 +501,217 @@ cc_binary(
 cc_binary(
     name = "test_shutdown_stress",
     srcs = ["@libzmq//:tests/test_shutdown_stress.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "test_spec_router",
+    srcs = ["@libzmq//:tests/test_spec_router.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "test_zmq_poll_fd",
+    srcs = ["@libzmq//:tests/test_zmq_poll_fd.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "test_filter_ipc",
+    srcs = ["@libzmq//:tests/test_filter_ipc.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "test_hwm_pubsub",
+    srcs = ["@libzmq//:tests/test_hwm_pubsub.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "test_monitor",
+    srcs = ["@libzmq//:tests/test_monitor.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "unittest_udp_address",
+    srcs = ["@libzmq//:unittests/unittest_udp_address.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+        "@libzmq//src",
+    ],
+)
+
+cc_binary(
+    name = "test_immediate",
+    srcs = ["@libzmq//:tests/test_immediate.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "test_reqrep_ipc",
+    srcs = ["@libzmq//:tests/test_reqrep_ipc.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "test_xpub_nodrop",
+    srcs = ["@libzmq//:tests/test_xpub_nodrop.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "test_router_mandatory_hwm",
+    srcs = ["@libzmq//:tests/test_router_mandatory_hwm.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "test_connect_null_fuzzer",
+    srcs = ["@libzmq//:tests/test_connect_null_fuzzer.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "test_issue_566",
+    srcs = ["@libzmq//:tests/test_issue_566.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "test_reqrep_device_tipc",
+    srcs = ["@libzmq//:tests/test_reqrep_device_tipc.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "test_proxy_hwm",
+    srcs = ["@libzmq//:tests/test_proxy_hwm.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "test_reconnect_options",
+    srcs = ["@libzmq//:tests/test_reconnect_options.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "test_setsockopt",
+    srcs = ["@libzmq//:tests/test_setsockopt.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "test_bind_fuzzer",
+    srcs = ["@libzmq//:tests/test_bind_fuzzer.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "test_inproc_connect",
+    srcs = ["@libzmq//:tests/test_inproc_connect.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "test_msg_flags",
+    srcs = ["@libzmq//:tests/test_msg_flags.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "test_sodium",
+    srcs = ["@libzmq//:tests/test_sodium.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "test_stream_empty",
+    srcs = ["@libzmq//:tests/test_stream_empty.cpp"],
     includes = [
         "@libzmq//.cmake-build",
         "@libzmq//external/unity",
@@ -1336,8 +731,8 @@ cc_binary(
 )
 
 cc_binary(
-    name = "test_hwm_pubsub",
-    srcs = ["@libzmq//:tests/test_hwm_pubsub.cpp"],
+    name = "test_conflate",
+    srcs = ["@libzmq//:tests/test_conflate.cpp"],
     includes = [
         "@libzmq//.cmake-build",
         "@libzmq//external/unity",
@@ -1346,8 +741,8 @@ cc_binary(
 )
 
 cc_binary(
-    name = "test_proxy",
-    srcs = ["@libzmq//:tests/test_proxy.cpp"],
+    name = "test_getsockopt_memset",
+    srcs = ["@libzmq//:tests/test_getsockopt_memset.cpp"],
     includes = [
         "@libzmq//.cmake-build",
         "@libzmq//external/unity",
@@ -1356,8 +751,8 @@ cc_binary(
 )
 
 cc_binary(
-    name = "test_stream",
-    srcs = ["@libzmq//:tests/test_stream.cpp"],
+    name = "test_pair_tipc",
+    srcs = ["@libzmq//:tests/test_pair_tipc.cpp"],
     includes = [
         "@libzmq//.cmake-build",
         "@libzmq//external/unity",
@@ -1365,19 +760,102 @@ cc_binary(
     ],
 )
 
-cc_binary(
-    name = "test_xpub_topic",
-    srcs = ["@libzmq//:tests/test_xpub_topic.cpp"],
+cc_library(
+    name = "unity",
+    srcs = ["@libzmq//:external/unity/unity.c"],
+    hdrs = [
+        "@libzmq//:external/unity/unity.h",
+        "@libzmq//:external/unity/unity_internals.h",
+    ],
     includes = [
         "@libzmq//.cmake-build",
         "@libzmq//external/unity",
-        "@libzmq//include",
     ],
 )
 
 cc_binary(
     name = "test_connect_resolve",
     srcs = ["@libzmq//:tests/test_connect_resolve.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "test_reqrep_inproc",
+    srcs = ["@libzmq//:tests/test_reqrep_inproc.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "test_sockopt_hwm",
+    srcs = ["@libzmq//:tests/test_sockopt_hwm.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "test_term_endpoint",
+    srcs = ["@libzmq//:tests/test_term_endpoint.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "test_term_endpoint_tipc",
+    srcs = ["@libzmq//:tests/test_term_endpoint_tipc.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "test_ipc_wildcard",
+    srcs = ["@libzmq//:tests/test_ipc_wildcard.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "test_security_null",
+    srcs = ["@libzmq//:tests/test_security_null.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "test_socks",
+    srcs = ["@libzmq//:tests/test_socks.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "test_stream_timeout",
+    srcs = ["@libzmq//:tests/test_stream_timeout.cpp"],
     includes = [
         "@libzmq//.cmake-build",
         "@libzmq//external/unity",
@@ -1396,8 +874,150 @@ cc_binary(
 )
 
 cc_binary(
-    name = "test_many_sockets",
-    srcs = ["@libzmq//:tests/test_many_sockets.cpp"],
+    name = "test_security_gssapi",
+    srcs = ["@libzmq//:tests/test_security_gssapi.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "test_stream_disconnect",
+    srcs = ["@libzmq//:tests/test_stream_disconnect.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "test_unbind_wildcard",
+    srcs = ["@libzmq//:tests/test_unbind_wildcard.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "unittest_ypipe",
+    srcs = ["@libzmq//:unittests/unittest_ypipe.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+        "@libzmq//src",
+    ],
+)
+
+cc_binary(
+    name = "test_proxy_steerable",
+    srcs = ["@libzmq//:tests/test_proxy_steerable.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "test_proxy_terminate",
+    srcs = ["@libzmq//:tests/test_proxy_terminate.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "test_sub_forward",
+    srcs = ["@libzmq//:tests/test_sub_forward.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "test_system",
+    srcs = ["@libzmq//:tests/test_system.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "test_ctx_destroy",
+    srcs = ["@libzmq//:tests/test_ctx_destroy.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "test_spec_pushpull",
+    srcs = ["@libzmq//:tests/test_spec_pushpull.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "unittest_ip_resolver",
+    srcs = ["@libzmq//:unittests/unittest_ip_resolver.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+        "@libzmq//src",
+    ],
+)
+
+cc_binary(
+    name = "test_fork",
+    srcs = ["@libzmq//:tests/test_fork.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "test_hwm",
+    srcs = ["@libzmq//:tests/test_hwm.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "test_pub_invert_matching",
+    srcs = ["@libzmq//:tests/test_pub_invert_matching.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "test_xpub_verbose",
+    srcs = ["@libzmq//:tests/test_xpub_verbose.cpp"],
     includes = [
         "@libzmq//.cmake-build",
         "@libzmq//external/unity",
@@ -1416,8 +1036,179 @@ cc_binary(
 )
 
 cc_binary(
-    name = "test_term_endpoint_tipc",
-    srcs = ["@libzmq//:tests/test_term_endpoint_tipc.cpp"],
+    name = "test_reconnect_ivl",
+    srcs = ["@libzmq//:tests/test_reconnect_ivl.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "test_stream_exceeds_buffer",
+    srcs = ["@libzmq//:tests/test_stream_exceeds_buffer.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "test_xpub_manual",
+    srcs = ["@libzmq//:tests/test_xpub_manual.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "test_pair_ipc",
+    srcs = ["@libzmq//:tests/test_pair_ipc.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "test_router_mandatory",
+    srcs = ["@libzmq//:tests/test_router_mandatory.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "test_stream",
+    srcs = ["@libzmq//:tests/test_stream.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "test_shutdown_stress_tipc",
+    srcs = ["@libzmq//:tests/test_shutdown_stress_tipc.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "test_spec_req",
+    srcs = ["@libzmq//:tests/test_spec_req.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "benchmark_radix_tree",
+    srcs = ["@libzmq//:perf/benchmark_radix_tree.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//include",
+        "@libzmq//src",
+    ],
+)
+
+cc_binary(
+    name = "test_connect_delay_tipc",
+    srcs = ["@libzmq//:tests/test_connect_delay_tipc.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "test_iov",
+    srcs = ["@libzmq//:tests/test_iov.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "unittest_curve_encoding",
+    srcs = ["@libzmq//:unittests/unittest_curve_encoding.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+        "@libzmq//src",
+    ],
+)
+
+cc_binary(
+    name = "test_msg_ffn",
+    srcs = ["@libzmq//:tests/test_msg_ffn.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "test_rebind_ipc",
+    srcs = ["@libzmq//:tests/test_rebind_ipc.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "test_req_correlate",
+    srcs = ["@libzmq//:tests/test_req_correlate.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "test_router_handover",
+    srcs = ["@libzmq//:tests/test_router_handover.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "test_socket_null",
+    srcs = ["@libzmq//:tests/test_socket_null.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "test_tcp_accept_filter",
+    srcs = ["@libzmq//:tests/test_tcp_accept_filter.cpp"],
     includes = [
         "@libzmq//.cmake-build",
         "@libzmq//external/unity",
@@ -1426,14 +1217,223 @@ cc_binary(
 )
 
 cc_library(
-    name = "unity",
-    srcs = ["@libzmq//:external/unity/unity.c"],
+    name = "testutil",
+    srcs = [
+        "@libzmq//:tests/testutil.cpp",
+        "@libzmq//:tests/testutil_monitoring.cpp",
+        "@libzmq//:tests/testutil_security.cpp",
+        "@libzmq//:tests/testutil_unity.cpp",
+    ],
     hdrs = [
-        "@libzmq//:external/unity/unity.h",
-        "@libzmq//:external/unity/unity_internals.h",
+        "@libzmq//:tests/testutil.hpp",
+        "@libzmq//:tests/testutil_monitoring.hpp",
+        "@libzmq//:tests/testutil_security.hpp",
+        "@libzmq//:tests/testutil_unity.hpp",
     ],
     includes = [
         "@libzmq//.cmake-build",
         "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "test_atomics",
+    srcs = ["@libzmq//:tests/test_atomics.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "test_bind_null_fuzzer",
+    srcs = ["@libzmq//:tests/test_bind_null_fuzzer.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "test_reqrep_tipc",
+    srcs = ["@libzmq//:tests/test_reqrep_tipc.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "test_connect_fuzzer",
+    srcs = ["@libzmq//:tests/test_connect_fuzzer.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "test_probe_router",
+    srcs = ["@libzmq//:tests/test_probe_router.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "test_abstract_ipc",
+    srcs = ["@libzmq//:tests/test_abstract_ipc.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "test_security_zap",
+    srcs = ["@libzmq//:tests/test_security_zap.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "test_ancillaries",
+    srcs = ["@libzmq//:tests/test_ancillaries.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "test_connect_rid",
+    srcs = ["@libzmq//:tests/test_connect_rid.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "test_pair_inproc",
+    srcs = ["@libzmq//:tests/test_pair_inproc.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "test_heartbeats",
+    srcs = ["@libzmq//:tests/test_heartbeats.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "test_timeo",
+    srcs = ["@libzmq//:tests/test_timeo.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "test_srcfd",
+    srcs = ["@libzmq//:tests/test_srcfd.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "test_last_endpoint",
+    srcs = ["@libzmq//:tests/test_last_endpoint.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "test_pair_tcp",
+    srcs = ["@libzmq//:tests/test_pair_tcp.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "test_security_plain",
+    srcs = ["@libzmq//:tests/test_security_plain.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "test_xpub_welcome_msg",
+    srcs = ["@libzmq//:tests/test_xpub_welcome_msg.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "unittest_poller",
+    srcs = ["@libzmq//:unittests/unittest_poller.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+        "@libzmq//src",
+    ],
+)
+
+cc_binary(
+    name = "test_invalid_rep",
+    srcs = ["@libzmq//:tests/test_invalid_rep.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
+    ],
+)
+
+cc_binary(
+    name = "test_spec_rep",
+    srcs = ["@libzmq//:tests/test_spec_rep.cpp"],
+    includes = [
+        "@libzmq//.cmake-build",
+        "@libzmq//external/unity",
+        "@libzmq//include",
     ],
 )

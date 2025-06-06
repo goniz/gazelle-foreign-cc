@@ -4,7 +4,6 @@ import (
 	"flag"
 	"log"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -235,141 +234,61 @@ func (l *cmakeLang) generateRulesFromExternalSource(args language.GenerateArgs, 
 }
 
 // findExternalRepo attempts to locate an external repository
+// This uses the simplified runfiles-based approach instead of complex guessing logic
 func (l *cmakeLang) findExternalRepo(repoName string, args language.GenerateArgs) string {
-	// Try runfiles-based discovery first (most reliable in Bazel environment)
+	// Use runfiles-based discovery (reliable when repo is provided as data)
 	if repoPath := l.findRepoViaRunfiles(repoName); repoPath != "" {
 		return repoPath
 	}
 
-	// Common locations where Bazel might place external repositories
-	// We need to be more sophisticated about this in a real implementation
-	possiblePaths := []string{
-		// Bazel output base external directory
-		filepath.Join(args.Config.RepoRoot, "bazel-"+filepath.Base(args.Config.RepoRoot), "external", repoName),
-		// Bazel execroot external directory
-		filepath.Join(args.Config.RepoRoot, "bazel-out", "external", repoName),
-		// Module cache for bzlmod (newer Bazel versions)
-		filepath.Join(args.Config.RepoRoot, "bazel-"+filepath.Base(args.Config.RepoRoot), "external", "_main~"+repoName),
-		// Local repository pattern for testing
-		filepath.Join(args.Config.RepoRoot, repoName),
-	}
-
-	log.Printf("Searching for external repository '%s' in %d possible locations", repoName, len(possiblePaths))
-
-	for i, path := range possiblePaths {
-		log.Printf("  [%d] Checking: %s", i+1, path)
-		if stat, err := os.Stat(path); err == nil && stat.IsDir() {
-			log.Printf("  Found external repository at: %s", path)
-			return path
-		}
-	}
-
-	// Additional search in bazel output base for bzlmod repositories
-	// This is a more comprehensive approach for finding bzlmod repos
-	outputBase := strings.TrimSpace(os.Getenv("BAZEL_OUTPUT_BASE"))
-	if outputBase == "" {
-		// Try to get output base from bazel info (fallback)
-		cmd := exec.Command("bazel", "info", "output_base")
-		cmd.Dir = args.Config.RepoRoot
-		if output, err := cmd.Output(); err == nil {
-			outputBase = strings.TrimSpace(string(output))
-		}
-	}
-	
-	if outputBase != "" {
-		// Search for bzlmod repository patterns in the actual bazel output base
-		externalDir := filepath.Join(outputBase, "external")
-		if entries, err := os.ReadDir(externalDir); err == nil {
-			for _, entry := range entries {
-				if entry.IsDir() {
-					entryName := entry.Name()
-					// Check various patterns that might match our repository
-					if strings.Contains(entryName, repoName) {
-						candidate := filepath.Join(externalDir, entryName)
-						log.Printf("  Found potential bzlmod repository at: %s", candidate)
-						return candidate
-					}
-				}
-			}
-		}
-	}
-
-	// As a final fallback for testing, try to find the repository using bazel query
-	// This is not ideal for production but helps with testing
-	cmd := exec.Command("bazel", "query", "--output=location", "@"+repoName+"//:all")
-	cmd.Dir = args.Config.RepoRoot
-	if output, err := cmd.Output(); err == nil {
-		outputStr := strings.TrimSpace(string(output))
-		if strings.Contains(outputStr, "/external/") {
-			// Extract the path from the output
-			// Example output: /home/runner/.bazel/external/+_repo_rules2+simple_cmake_lib/BUILD.bazel:1:10
-			parts := strings.Split(outputStr, "/external/")
-			if len(parts) >= 2 {
-				repoPathParts := strings.Split(parts[1], "/")
-				if len(repoPathParts) >= 1 {
-					repoDir := repoPathParts[0]
-					candidate := filepath.Join(strings.Split(outputStr, "/external/")[0], "external", repoDir)
-					log.Printf("  Found repository via bazel query at: %s", candidate)
-					if stat, err := os.Stat(candidate); err == nil && stat.IsDir() {
-						return candidate
-					}
-				}
-			}
-		}
-	}
-
-	log.Printf("Could not find external repository '%s' in any standard location", repoName)
+	log.Printf("Could not find external repository '%s' - ensure it's provided as data to the gazelle rule (e.g., data = [\"@%s//:srcs\"])", repoName, repoName)
 	return ""
 }
 
 // findRepoViaRunfiles uses Bazel runfiles to locate external repositories
+// This implementation uses a hybrid approach: first try the runfiles API with
+// common patterns, then fall back to direct filesystem access for patterns
+// that the API might not handle correctly (like bzlmod repository names).
 func (l *cmakeLang) findRepoViaRunfiles(repoName string) string {
 	log.Printf("Attempting to find repository '%s' via runfiles", repoName)
 	
-	// Try to get the workspace root using runfiles
-	workspaceRoot, err := bazel.Runfile("")
-	if err != nil {
-		log.Printf("  Failed to get runfiles workspace root: %v", err)
-		return ""
+	// First, try the runfiles API approach with different patterns
+	possibleRunfilePaths := []string{
+		repoName,                          // Direct repository name
+		"_main/" + repoName,               // Main workspace relative path
+		"@" + repoName,                    // With @ prefix
+		"external/" + repoName,            // Under external directory
+		"+" + repoName,                    // Simple bzlmod pattern
 	}
-	log.Printf("  Runfiles workspace root: %s", workspaceRoot)
 	
-	// From the runfiles workspace root, we can derive the output base
-	// The runfiles path is typically like: /home/runner/.bazel/execroot/_main/bazel-out/k8-fastbuild/bin/gazelle.runfiles/_main
-	// We need to get to: /home/runner/.bazel/external/+_repo_rules+libzmq
-	
-	// Extract the bazel cache root path
-	parts := strings.Split(workspaceRoot, "/execroot/")
-	if len(parts) >= 2 {
-		bazelCacheRoot := parts[0] // This should be like /home/runner/.bazel
-		
-		// Try the new bzlmod pattern
-		repoPattern := "+" + repoName
-		candidate := filepath.Join(bazelCacheRoot, "external", repoPattern)
-		log.Printf("  Checking runfiles-derived path: %s", candidate)
-		if stat, err := os.Stat(candidate); err == nil && stat.IsDir() {
-			log.Printf("  Found repository via runfiles at: %s", candidate)
-			return candidate
-		}
-		
-		// Try other patterns
-		otherPatterns := []string{
-			repoName,
-			"_main+" + repoName,
-			"bzlmod~" + repoName,
-		}
-		
-		for _, pattern := range otherPatterns {
-			candidate := filepath.Join(bazelCacheRoot, "external", pattern)
-			log.Printf("  Checking runfiles-derived path: %s", candidate)
-			if stat, err := os.Stat(candidate); err == nil && stat.IsDir() {
-				log.Printf("  Found repository via runfiles at: %s", candidate)
-				return candidate
+	for _, path := range possibleRunfilePaths {
+		if repoPath, err := bazel.Runfile(path); err == nil {
+			if stat, err := os.Stat(repoPath); err == nil && stat.IsDir() {
+				log.Printf("Found repository via runfiles API at: %s", repoPath)
+				return repoPath
 			}
 		}
 	}
 	
-	log.Printf("  Could not find repository '%s' via runfiles", repoName)
+	// If the runfiles API didn't work, try direct runfiles directory access
+	// This is necessary for bzlmod repositories which use special naming patterns
+	// like "+_repo_rules+reponame" that the runfiles API doesn't handle well
+	if runfilesDir := os.Getenv("RUNFILES_DIR"); runfilesDir != "" {
+		directPaths := []string{
+			filepath.Join(runfilesDir, "+_repo_rules+"+repoName),  // Bzlmod repo rules pattern
+			filepath.Join(runfilesDir, "+"+repoName),              // Simple bzlmod pattern
+			filepath.Join(runfilesDir, repoName),                  // Direct name
+		}
+		
+		for _, dirPath := range directPaths {
+			if stat, err := os.Stat(dirPath); err == nil && stat.IsDir() {
+				log.Printf("Found repository via direct runfiles path at: %s", dirPath)
+				return dirPath
+			}
+		}
+	}
+	
+	log.Printf("Could not find repository '%s' via runfiles", repoName)
 	return ""
 }
 
