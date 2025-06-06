@@ -91,13 +91,7 @@ type Target struct {
 	} `json:"artifacts,omitempty"`
 	Build        string `json:"build,omitempty"`
 	Source       string `json:"source,omitempty"`
-	Install      *struct {
-		Prefix string `json:"prefix"`
-		Destinations []struct {
-			Path      string `json:"path"`
-			Backtrace int    `json:"backtrace,omitempty"`
-		} `json:"destinations"`
-	} `json:"install,omitempty"`
+	Install      json.RawMessage `json:"install,omitempty"`
 	Link *struct {
 		Language      string `json:"language"`
 		CommandFragments []struct {
