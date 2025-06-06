@@ -1,4 +1,7 @@
 # LibZMQ example BUILD file
 
+# gazelle:cmake_define ZMQ_BUILD_TESTS OFF
+# gazelle:cmake_define WITH_PERF_TOOL OFF
+
 # Example client and server applications using libzmq
 # Targets disabled since libzmq dependency is not available in CI
