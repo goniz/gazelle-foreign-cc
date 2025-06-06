@@ -71,6 +71,48 @@ func TestExternalRepoPathGeneration(t *testing.T) {
 	}
 }
 
+func TestFindRepoViaRunfilesNewLogic(t *testing.T) {
+	// Test the new runfiles-based repository detection logic
+	
+	lang := &cmakeLang{}
+	
+	// Test case 1: Repository that doesn't exist in runfiles
+	repoPath := lang.findRepoViaRunfiles("nonexistent_repo")
+	if repoPath != "" {
+		t.Errorf("Expected empty path for nonexistent repository, got %s", repoPath)
+	}
+	
+	// Note: We can't easily test the positive case without actually having
+	// the repository available in runfiles during the test, but the negative
+	// case validates that the method handles missing repositories correctly
+}
+
+func TestFindExternalRepoSimplified(t *testing.T) {
+	// Test the simplified external repository detection logic
+	
+	lang := &cmakeLang{}
+	
+	// Create mock args
+	c := &config.Config{
+		RepoRoot: "/test/workspace",
+		Exts:     make(map[string]interface{}),
+	}
+	c.Exts["cmake"] = gazelle.NewCMakeConfig()
+	
+	args := language.GenerateArgs{
+		Config: c,
+		Dir:    "/test/workspace/thirdparty/somelib",
+		Rel:    "thirdparty/somelib",
+	}
+	
+	// Test that findExternalRepo returns empty string when runfiles don't contain the repo
+	// (which is expected behavior when the repo is not provided as data to gazelle rule)
+	repoPath := lang.findExternalRepo("nonexistent_repo", args)
+	if repoPath != "" {
+		t.Errorf("Expected empty path for repository not in runfiles, got %s", repoPath)
+	}
+}
+
 func TestLabelParsing(t *testing.T) {
 	// Test the label parsing logic from generateRulesFromExternalSource
 	
