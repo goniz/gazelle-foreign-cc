@@ -234,42 +234,62 @@ func (l *cmakeLang) generateRulesFromExternalSource(args language.GenerateArgs, 
 }
 
 // findExternalRepo attempts to locate an external repository
-// This now uses the simplified runfiles-based approach without guessing logic
+// This uses the simplified runfiles-based approach instead of complex guessing logic
 func (l *cmakeLang) findExternalRepo(repoName string, args language.GenerateArgs) string {
-	// Use runfiles-based discovery (should be reliable when repo is provided as data)
+	// Use runfiles-based discovery (reliable when repo is provided as data)
 	if repoPath := l.findRepoViaRunfiles(repoName); repoPath != "" {
 		return repoPath
 	}
 
-	log.Printf("Could not find external repository '%s' - ensure it's provided as data to the gazelle rule", repoName)
+	log.Printf("Could not find external repository '%s' - ensure it's provided as data to the gazelle rule (e.g., data = [\"@%s//:srcs\"])", repoName, repoName)
 	return ""
 }
 
 // findRepoViaRunfiles uses Bazel runfiles to locate external repositories
-// This is the new implementation that relies on the repository being provided
-// as data to the gazelle rule, making it directly available in runfiles.
+// This implementation uses a hybrid approach: first try the runfiles API with
+// common patterns, then fall back to direct filesystem access for patterns
+// that the API might not handle correctly (like bzlmod repository names).
 func (l *cmakeLang) findRepoViaRunfiles(repoName string) string {
 	log.Printf("Attempting to find repository '%s' via runfiles", repoName)
 	
-	// Try to find the repository directly in runfiles
-	// If the repository is provided as data = ["@repo//:srcs"] to the gazelle rule,
-	// it should be available directly at the repository name path
-	repoPath, err := bazel.Runfile(repoName)
-	if err != nil {
-		log.Printf("  Failed to get repository '%s' from runfiles: %v", repoName, err)
-		return ""
+	// First, try the runfiles API approach with different patterns
+	possibleRunfilePaths := []string{
+		repoName,                          // Direct repository name
+		"_main/" + repoName,               // Main workspace relative path
+		"@" + repoName,                    // With @ prefix
+		"external/" + repoName,            // Under external directory
+		"+" + repoName,                    // Simple bzlmod pattern
 	}
 	
-	log.Printf("  Found repository '%s' via runfiles at: %s", repoName, repoPath)
-	
-	// Verify that the path exists and is a directory
-	if stat, err := os.Stat(repoPath); err == nil && stat.IsDir() {
-		log.Printf("  Verified repository directory exists at: %s", repoPath)
-		return repoPath
-	} else {
-		log.Printf("  Repository path does not exist or is not a directory: %s (error: %v)", repoPath, err)
-		return ""
+	for _, path := range possibleRunfilePaths {
+		if repoPath, err := bazel.Runfile(path); err == nil {
+			if stat, err := os.Stat(repoPath); err == nil && stat.IsDir() {
+				log.Printf("Found repository via runfiles API at: %s", repoPath)
+				return repoPath
+			}
+		}
 	}
+	
+	// If the runfiles API didn't work, try direct runfiles directory access
+	// This is necessary for bzlmod repositories which use special naming patterns
+	// like "+_repo_rules+reponame" that the runfiles API doesn't handle well
+	if runfilesDir := os.Getenv("RUNFILES_DIR"); runfilesDir != "" {
+		directPaths := []string{
+			filepath.Join(runfilesDir, "+_repo_rules+"+repoName),  // Bzlmod repo rules pattern
+			filepath.Join(runfilesDir, "+"+repoName),              // Simple bzlmod pattern
+			filepath.Join(runfilesDir, repoName),                  // Direct name
+		}
+		
+		for _, dirPath := range directPaths {
+			if stat, err := os.Stat(dirPath); err == nil && stat.IsDir() {
+				log.Printf("Found repository via direct runfiles path at: %s", dirPath)
+				return dirPath
+			}
+		}
+	}
+	
+	log.Printf("Could not find repository '%s' via runfiles", repoName)
+	return ""
 }
 
 // generateRulesFromTargets converts CMakeTarget objects to Bazel rules
