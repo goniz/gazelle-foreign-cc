@@ -77,19 +77,14 @@ type Codemodel struct {
 
 // Target represents a target object from CMake File API
 type Target struct {
-	Kind    string `json:"kind"`
-	Version struct {
-		Major int `json:"major"`
-		Minor int `json:"minor"`
-	} `json:"version"`
 	Name string `json:"name"`
 	ID   string `json:"id"`
 	Type string `json:"type"`
-	BacktracePath string `json:"backtracePath,omitempty"`
+	Backtrace int `json:"backtrace,omitempty"`
 	Paths struct {
 		Source string `json:"source"`
 		Build  string `json:"build"`
-	} `json:"paths"`
+	} `json:"paths,omitempty"`
 	NameOnDisk   string `json:"nameOnDisk,omitempty"`
 	Artifacts    []struct {
 		Path string `json:"path"`
@@ -122,61 +117,24 @@ type Target struct {
 		Path      string `json:"path,omitempty"`
 		SysRoot   string `json:"sysroot,omitempty"`
 	} `json:"link,omitempty"`
-	Archive *struct {
-		CommandFragments []struct {
-			Fragment  string `json:"fragment"`
-			Role      string `json:"role"`
-			Backtrace int    `json:"backtrace,omitempty"`
-		} `json:"commandFragments,omitempty"`
-		Flags []struct {
-			Fragment  string `json:"fragment"`
-			Backtrace int    `json:"backtrace,omitempty"`
-		} `json:"flags,omitempty"`
-		Path string `json:"path,omitempty"`
-	} `json:"archive,omitempty"`
+	Archive json.RawMessage `json:"archive,omitempty"`
 	Dependencies []struct {
 		ID        string `json:"id"`
 		Backtrace int    `json:"backtrace,omitempty"`
 	} `json:"dependencies,omitempty"`
 	Sources []struct {
-		Path           string `json:"path"`
-		CompileGroupIndex int `json:"compileGroupIndex,omitempty"`
-		SourceGroupIndex  int `json:"sourceGroupIndex,omitempty"`
-		IsGenerated    bool   `json:"isGenerated,omitempty"`
-		Backtrace      int    `json:"backtrace,omitempty"`
+		Path              string `json:"path"`
+		CompileGroupIndex int    `json:"compileGroupIndex,omitempty"`
+		SourceGroupIndex  int    `json:"sourceGroupIndex,omitempty"`
+		IsGenerated       bool   `json:"isGenerated,omitempty"`
+		Backtrace         int    `json:"backtrace,omitempty"`
 	} `json:"sources,omitempty"`
 	SourceGroups []struct {
 		Name    string `json:"name"`
 		Sources []int  `json:"sources"`
 	} `json:"sourceGroups,omitempty"`
-	CompileGroups []struct {
-		SourceIndexes []int `json:"sourceIndexes"`
-		Language      string `json:"language"`
-		CompileCommandFragments []struct {
-			Fragment  string `json:"fragment"`
-			Backtrace int    `json:"backtrace,omitempty"`
-		} `json:"compileCommandFragments,omitempty"`
-		Includes []struct {
-			Path      string `json:"path"`
-			IsSystem  bool   `json:"isSystem,omitempty"`
-			Backtrace int    `json:"backtrace,omitempty"`
-		} `json:"includes,omitempty"`
-		PreprocessorDefinitions []struct {
-			Define    string `json:"define"`
-			Backtrace int    `json:"backtrace,omitempty"`
-		} `json:"preprocessorDefinitions,omitempty"`
-		SysRoot string `json:"sysroot,omitempty"`
-	} `json:"compileGroups,omitempty"`
-	BacktraceGraph *struct {
-		Nodes []struct {
-			File     int `json:"file"`
-			Line     int `json:"line,omitempty"`
-			Command  int `json:"command,omitempty"`
-			Parent   int `json:"parent,omitempty"`
-		} `json:"nodes"`
-		Commands []string `json:"commands"`
-		Files    []string `json:"files"`
-	} `json:"backtraceGraph,omitempty"`
+	CompileGroups json.RawMessage `json:"compileGroups,omitempty"`
+	BacktraceGraph json.RawMessage `json:"backtraceGraph,omitempty"`
 	Folder string `json:"folder,omitempty"`
 }
 
@@ -315,6 +273,12 @@ func (api *CMakeFileAPI) ReadAPIResponse() (*APIIndex, *Codemodel, map[string]*T
 			var target Target
 			if err := json.Unmarshal(targetData, &target); err != nil {
 				log.Printf("Warning: failed to parse target file %s: %v", targetFile, err)
+				// Log the first part of the JSON for debugging
+				debugData := string(targetData)
+				if len(debugData) > 200 {
+					debugData = debugData[:200] + "..."
+				}
+				log.Printf("Debug: First 200 chars of problematic JSON: %s", debugData)
 				continue
 			}
 
@@ -388,19 +352,8 @@ func (api *CMakeFileAPI) GenerateFromAPI(relativeDir string) ([]*gazelle.CMakeTa
 		}
 
 		// Extract include directories
-		if len(target.CompileGroups) > 0 {
-			for _, include := range target.CompileGroups[0].Includes {
-				includePath := include.Path
-				if filepath.IsAbs(includePath) {
-					if relPath, err := filepath.Rel(api.sourceDir, includePath); err == nil {
-						includePath = relPath
-					}
-				}
-				if !strings.HasPrefix(includePath, "..") && !include.IsSystem {
-					cmakeTarget.IncludeDirectories = appendIfMissing(cmakeTarget.IncludeDirectories, includePath)
-				}
-			}
-		}
+		includeDirectories := extractIncludeDirectories(target, api.sourceDir)
+		cmakeTarget.IncludeDirectories = append(cmakeTarget.IncludeDirectories, includeDirectories...)
 
 		// Extract linked libraries from dependencies
 		for _, dep := range target.Dependencies {
@@ -428,6 +381,48 @@ func (api *CMakeFileAPI) GenerateFromAPI(relativeDir string) ([]*gazelle.CMakeTa
 }
 
 // Helper functions
+
+// extractIncludeDirectories safely extracts include directories from CompileGroups
+func extractIncludeDirectories(target *Target, sourceDir string) []string {
+	var includeDirectories []string
+	
+	if len(target.CompileGroups) == 0 {
+		return includeDirectories
+	}
+	
+	// Parse the CompileGroups JSON
+	var compileGroups []struct {
+		SourceIndexes []int `json:"sourceIndexes"`
+		Language      string `json:"language"`
+		Includes []struct {
+			Path      string `json:"path"`
+			IsSystem  bool   `json:"isSystem,omitempty"`
+			Backtrace int    `json:"backtrace,omitempty"`
+		} `json:"includes,omitempty"`
+	}
+	
+	if err := json.Unmarshal(target.CompileGroups, &compileGroups); err != nil {
+		log.Printf("Warning: failed to parse CompileGroups for target %s: %v", target.Name, err)
+		return includeDirectories
+	}
+	
+	// Extract includes from the first compile group
+	if len(compileGroups) > 0 {
+		for _, include := range compileGroups[0].Includes {
+			includePath := include.Path
+			if filepath.IsAbs(includePath) {
+				if relPath, err := filepath.Rel(sourceDir, includePath); err == nil {
+					includePath = relPath
+				}
+			}
+			if !strings.HasPrefix(includePath, "..") && !include.IsSystem {
+				includeDirectories = appendIfMissing(includeDirectories, includePath)
+			}
+		}
+	}
+	
+	return includeDirectories
+}
 
 func appendIfMissing(slice []string, str string) []string {
 	for _, s := range slice {
