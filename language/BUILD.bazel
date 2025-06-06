@@ -8,7 +8,11 @@ go_library(
         "cmake_api.go",
     ],
     importpath = "github.com/goniz/gazelle-foreign-cc/language",
-    visibility = ["//gazelle:__pkg__", "//cmd/gazelle-foreign-cc:__pkg__", "//:__pkg__"], # Allow plugin binary to import this
+    visibility = [
+        "//:__pkg__",
+        "//cmd/gazelle-foreign-cc:__pkg__",
+        "//gazelle:__pkg__",
+    ],  # Allow plugin binary to import this
     deps = [
         "//gazelle:cmake_lib",
         "@gazelle//config",
@@ -23,7 +27,11 @@ go_library(
 
 go_test(
     name = "language_tests",
-    srcs = ["cmake_test.go"],
+    srcs = [
+        "cmake_test.go",
+        "cmake_api_test.go",
+        "cmake_api_integration_test.go",
+    ],
     embed = [":language"],
     deps = ["//gazelle:cmake_lib"],
 )
