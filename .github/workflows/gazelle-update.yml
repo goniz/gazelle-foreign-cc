@@ -15,19 +15,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-
       - name: Set up Bazel
         uses: bazel-contrib/setup-bazel@0.14.0
-
-      - name: Verify Bazel module integrity
-        run: |
-          bazel mod tidy
-          cd examples
-          bazel mod tidy
 
       - name: Run Gazelle on examples
         run: |
