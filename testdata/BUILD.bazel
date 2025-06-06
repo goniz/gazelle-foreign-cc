@@ -1,5 +1,8 @@
 filegroup(
     name = "all",
-    srcs = glob(["**"], exclude=["**/BUILD.bazel"]),
+    srcs = glob(
+        ["**"],
+        exclude = ["**/BUILD.bazel"],
+    ),
     visibility = ["//visibility:public"],
 )

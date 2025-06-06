@@ -1,14 +1,14 @@
-load("@rules_go//go:def.bzl", "go_binary")
 load("@gazelle//:def.bzl", "gazelle", "gazelle_binary")
+load("@rules_go//go:def.bzl", "go_binary")
 
 # Test utility for CMake File API
 go_binary(
     name = "cmake-test-util",
     srcs = ["main.go"],
+    visibility = ["//visibility:public"],
     deps = [
         "//language",
     ],
-    visibility = ["//visibility:public"],
 )
 
 # Gazelle binary with CMake language plugin
