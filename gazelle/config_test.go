@@ -68,3 +68,80 @@ func TestCMakeSourceDirective(t *testing.T) {
 	// The directive should be processed without error
 	// Note: cmake_source directives are handled per-package, not stored in config
 }
+
+func TestCMakeDefineDirective(t *testing.T) {
+	cfg := NewCMakeConfig()
+	c := &config.Config{
+		Exts: make(map[string]interface{}),
+	}
+	c.Exts["cmake"] = cfg
+
+	// Create a mock BUILD file with cmake_define directives
+	f := &rule.File{
+		Directives: []rule.Directive{
+			{Key: "cmake_define", Value: "ZMQ_BUILD_TESTS OFF"},
+			{Key: "cmake_define", Value: "WITH_PERF_TOOL OFF"},
+			{Key: "cmake_define", Value: "CMAKE_BUILD_TYPE Release"},
+		},
+	}
+
+	// Configure should parse the directives
+	cfg.Configure(c, "test/package", f)
+
+	// Verify the directives were parsed correctly
+	expectedDefines := map[string]string{
+		"ZMQ_BUILD_TESTS":   "OFF",
+		"WITH_PERF_TOOL":    "OFF",
+		"CMAKE_BUILD_TYPE":  "Release",
+	}
+
+	for key, expectedValue := range expectedDefines {
+		if actualValue, exists := cfg.CMakeDefines[key]; !exists {
+			t.Errorf("Expected CMake define %s to be set", key)
+		} else if actualValue != expectedValue {
+			t.Errorf("Expected CMake define %s=%s, got %s=%s", key, expectedValue, key, actualValue)
+		}
+	}
+}
+
+func TestCMakeDefineDirectiveInvalidFormat(t *testing.T) {
+	cfg := NewCMakeConfig()
+	c := &config.Config{
+		Exts: make(map[string]interface{}),
+	}
+	c.Exts["cmake"] = cfg
+
+	// Create a mock BUILD file with invalid cmake_define directive
+	f := &rule.File{
+		Directives: []rule.Directive{
+			{Key: "cmake_define", Value: "INVALID_FORMAT"},
+			{Key: "cmake_define", Value: "TOO MANY PARTS HERE"},
+		},
+	}
+
+	// Configure should handle invalid formats gracefully
+	cfg.Configure(c, "test/package", f)
+
+	// No defines should be set for invalid formats
+	if len(cfg.CMakeDefines) != 0 {
+		t.Errorf("Expected no CMake defines to be set for invalid formats, got %v", cfg.CMakeDefines)
+	}
+}
+
+func TestCMakeDefineDirectiveKnown(t *testing.T) {
+	cfg := NewCMakeConfig()
+	directives := cfg.KnownDirectives()
+	
+	// Check that cmake_define directive is in known directives
+	found := false
+	for _, d := range directives {
+		if d == "cmake_define" {
+			found = true
+			break
+		}
+	}
+	
+	if !found {
+		t.Error("cmake_define directive not found in KnownDirectives")
+	}
+}

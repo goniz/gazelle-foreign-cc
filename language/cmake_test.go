@@ -185,3 +185,45 @@ func findIndex(s, substr string) int {
 	}
 	return -1
 }
+
+func TestCMakeDefinesInAPICommand(t *testing.T) {
+	// Test that CMake defines are properly passed to the cmake command
+	sourceDir := "/tmp/test_source"
+	buildDir := "/tmp/test_build"
+	cmakeExe := "cmake"
+	cmakeDefines := map[string]string{
+		"ZMQ_BUILD_TESTS": "OFF",
+		"WITH_PERF_TOOL":  "OFF",
+		"CMAKE_BUILD_TYPE": "Release",
+	}
+
+	api := NewCMakeFileAPI(sourceDir, buildDir, cmakeExe, cmakeDefines)
+
+	// Check that the defines are stored correctly
+	if len(api.cmakeDefines) != 3 {
+		t.Errorf("Expected 3 cmake defines, got %d", len(api.cmakeDefines))
+	}
+
+	for key, expectedValue := range cmakeDefines {
+		if actualValue, exists := api.cmakeDefines[key]; !exists {
+			t.Errorf("Expected CMake define %s to be stored", key)
+		} else if actualValue != expectedValue {
+			t.Errorf("Expected CMake define %s=%s, got %s=%s", key, expectedValue, key, actualValue)
+		}
+	}
+}
+
+func TestCMakeEmptyDefines(t *testing.T) {
+	// Test that empty defines work correctly
+	sourceDir := "/tmp/test_source"
+	buildDir := "/tmp/test_build"  
+	cmakeExe := "cmake"
+	cmakeDefines := make(map[string]string)
+
+	api := NewCMakeFileAPI(sourceDir, buildDir, cmakeExe, cmakeDefines)
+
+	// Check that empty defines are handled correctly
+	if len(api.cmakeDefines) != 0 {
+		t.Errorf("Expected 0 cmake defines, got %d", len(api.cmakeDefines))
+	}
+}

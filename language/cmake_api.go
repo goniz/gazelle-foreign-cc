@@ -182,17 +182,19 @@ type Target struct {
 
 // CMakeFileAPI handles interaction with CMake File API
 type CMakeFileAPI struct {
-	sourceDir string
-	buildDir  string
-	cmakeExe  string
+	sourceDir    string
+	buildDir     string
+	cmakeExe     string
+	cmakeDefines map[string]string
 }
 
 // NewCMakeFileAPI creates a new CMake File API handler
-func NewCMakeFileAPI(sourceDir, buildDir, cmakeExe string) *CMakeFileAPI {
+func NewCMakeFileAPI(sourceDir, buildDir, cmakeExe string, cmakeDefines map[string]string) *CMakeFileAPI {
 	return &CMakeFileAPI{
-		sourceDir: sourceDir,
-		buildDir:  buildDir,
-		cmakeExe:  cmakeExe,
+		sourceDir:    sourceDir,
+		buildDir:     buildDir,
+		cmakeExe:     cmakeExe,
+		cmakeDefines: cmakeDefines,
 	}
 }
 
@@ -227,13 +229,20 @@ func (api *CMakeFileAPI) Configure() error {
 		return fmt.Errorf("failed to create build directory: %w", err)
 	}
 
+	// Build cmake command with -D flags for defines
+	args := []string{}
+	for key, value := range api.cmakeDefines {
+		args = append(args, fmt.Sprintf("-D%s=%s", key, value))
+	}
+	args = append(args, api.sourceDir)
+
 	// Run cmake configure
-	cmd := exec.Command(api.cmakeExe, api.sourceDir)
+	cmd := exec.Command(api.cmakeExe, args...)
 	cmd.Dir = api.buildDir
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
-	log.Printf("Running CMake configure: %s %s (in %s)", api.cmakeExe, api.sourceDir, api.buildDir)
+	log.Printf("Running CMake configure: %s %v (in %s)", api.cmakeExe, args, api.buildDir)
 	
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("cmake configure failed: %w", err)
