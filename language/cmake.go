@@ -158,7 +158,7 @@ func (l *cmakeLang) GenerateRules(args language.GenerateArgs) language.GenerateR
 
 	// Try to use CMake File API first
 	buildDir := filepath.Join(args.Dir, ".cmake-build")
-	api := NewCMakeFileAPI(args.Dir, buildDir, cfg.CMakeExecutable)
+	api := NewCMakeFileAPI(args.Dir, buildDir, cfg.CMakeExecutable, cfg.CMakeDefines)
 
 	cmakeTargets, err := api.GenerateFromAPI(args.Rel)
 	if err != nil {
@@ -213,7 +213,7 @@ func (l *cmakeLang) generateRulesFromExternalSource(args language.GenerateArgs, 
 	// Process the external CMake project
 	cfg := gazelle.GetCMakeConfig(args.Config)
 	buildDir := filepath.Join(externalRepoPath, ".cmake-build")
-	api := NewCMakeFileAPI(externalRepoPath, buildDir, cfg.CMakeExecutable)
+	api := NewCMakeFileAPI(externalRepoPath, buildDir, cfg.CMakeExecutable, cfg.CMakeDefines)
 
 	cmakeTargets, err := api.GenerateFromAPI(args.Rel)
 	if err != nil {

@@ -32,7 +32,7 @@ func main() {
 
 	// Test the CMake File API
 	buildDir := filepath.Join(*sourceDir, ".cmake-build")
-	api := language.NewCMakeFileAPI(*sourceDir, buildDir, "cmake")
+	api := language.NewCMakeFileAPI(*sourceDir, buildDir, "cmake", make(map[string]string))
 
 	targets, err := api.GenerateFromAPI("")
 	if err != nil {

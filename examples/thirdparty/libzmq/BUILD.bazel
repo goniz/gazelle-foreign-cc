@@ -1,6 +1,8 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
 
 # gazelle:cmake_source @libzmq
+# gazelle:cmake_define ZMQ_BUILD_TESTS OFF
+# gazelle:cmake_define WITH_PERF_TOOL OFF
 
 # This BUILD.bazel file demonstrates the cmake_source directive usage.
 # When gazelle runs, it will populate this file with cc_library and cc_binary
