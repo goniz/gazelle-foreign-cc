@@ -3,6 +3,7 @@ package gazelle
 import (
 	"flag"
 	"log"
+	"strings"
 
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/rule"
@@ -12,6 +13,8 @@ import (
 type CMakeConfig struct {
 	// Example configuration field: path to CMake executable.
 	CMakeExecutable string
+	// CMake variables to be passed as -D flags
+	CMakeDefines map[string]string
 	// Add other CMake-specific configuration fields here.
 }
 
@@ -19,6 +22,7 @@ type CMakeConfig struct {
 const (
 	cmakeExecutableDirective = "cmake_executable"
 	cmakeSourceDirective    = "cmake_source"
+	cmakeDefineDirective    = "cmake_define"
 	// Define other directive names here
 )
 
@@ -26,6 +30,7 @@ const (
 func NewCMakeConfig() *CMakeConfig {
 	return &CMakeConfig{
 		CMakeExecutable: "cmake", // Default value
+		CMakeDefines:    make(map[string]string),
 	}
 }
 
@@ -52,6 +57,7 @@ func (cfg *CMakeConfig) KnownDirectives() []string {
 	return []string{
 		cmakeExecutableDirective,
 		cmakeSourceDirective,
+		cmakeDefineDirective,
 		// Add other known directives here
 	}
 }
@@ -72,6 +78,16 @@ func (cfg *CMakeConfig) Configure(c *config.Config, rel string, f *rule.File) {
 		case cmakeSourceDirective:
 			// The cmake_source directive is handled per-package in GenerateRules, not globally
 			log.Printf("Configure: Found cmake_source directive %s in %s (will be processed per-package)", directive.Value, rel)
+		case cmakeDefineDirective:
+			// Parse cmake_define directive in format "KEY VALUE"
+			parts := strings.Fields(directive.Value)
+			if len(parts) != 2 {
+				log.Printf("Configure: Invalid cmake_define directive format '%s' in %s. Expected format: 'KEY VALUE'", directive.Value, rel)
+				continue
+			}
+			key, value := parts[0], parts[1]
+			cfg.CMakeDefines[key] = value
+			log.Printf("Configure: Set CMake define %s=%s from directive in %s", key, value, rel)
 		// Add cases for other directives here
 		default:
 			// Gazelle will warn about unknown directives if not in KnownDirectives()
