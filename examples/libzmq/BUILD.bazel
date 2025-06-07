@@ -7,11 +7,11 @@ load("@rules_cc//cc:defs.bzl", "cc_binary")
 cc_binary(
 	name = "client_example",
 	srcs = ["example_client.cpp"],
-	deps = ["//thirdparty/libzmq"],
+	deps = ["//thirdparty/libzmq:libzmq"],
 )
 
 cc_binary(
 	name = "server_example",
 	srcs = ["example_server.cpp"],
-	deps = ["//thirdparty/libzmq"],
+	deps = ["//thirdparty/libzmq:libzmq"],
 )

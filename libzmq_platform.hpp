@@ -53,12 +53,16 @@
 
 /* String functions */
 #define HAVE_STRNLEN
+#define ZMQ_HAVE_STRLCPY
 
 /* Enable IPC transport */
 #define ZMQ_HAVE_IPC
 
 /* Use built-in SHA1 implementation */
 #define ZMQ_USE_BUILTIN_SHA1
+
+/* WebSocket support */
+#define ZMQ_HAVE_WS
 
 /* Platform-specific includes based on compiler macros */
 #ifdef _AIX
