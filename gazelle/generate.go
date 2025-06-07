@@ -147,8 +147,8 @@ func generateRulesFromCMakeFile(args language.GenerateArgs, cmakeFilePath string
 				// For now, store as is. Resolution to Bazel paths is complex.
 				target.IncludeDirectories = appendIfMissing(target.IncludeDirectories, inclDir)
 			}
-		case "target_link_libraries": // Assumes target_link_libraries(target_name PRIVATE lib1 lib2 ...)
-			if len(cmdArgs) < 3 {
+		case "target_link_libraries": // Handle target_link_libraries(target_name [scope] lib1 lib2 ...)
+			if len(cmdArgs) < 2 {
 				continue
 			}
 			targetNameFromArgs := cmdArgs[0]
@@ -156,8 +156,19 @@ func generateRulesFromCMakeFile(args language.GenerateArgs, cmakeFilePath string
 			if !ok {
 				continue
 			}
-			// Skipping scope
-			for _, linkedLib := range cmdArgs[2:] {
+			
+			// Handle both formats: 
+			// target_link_libraries(target lib1 lib2) and 
+			// target_link_libraries(target PRIVATE/PUBLIC/INTERFACE lib1 lib2)
+			startIdx := 1
+			if len(cmdArgs) >= 3 {
+				scope := strings.ToUpper(cmdArgs[1])
+				if scope == "PRIVATE" || scope == "PUBLIC" || scope == "INTERFACE" {
+					startIdx = 2 // Skip the scope keyword
+				}
+			}
+			
+			for _, linkedLib := range cmdArgs[startIdx:] {
 				target.LinkedLibraries = appendIfMissing(target.LinkedLibraries, linkedLib)
 			}
 		}
@@ -215,10 +226,19 @@ func generateRulesFromCMakeFile(args language.GenerateArgs, cmakeFilePath string
 			}
 		}
 
-		// Dependencies will be handled by Resolve based on LinkedLibraries and includes.
-		// For now, we just store them. Resolve step would use cmTarget.LinkedLibraries.
-		// If GenerateRules populates r.SetAttr("deps", ...), then Resolve would also see this.
+		// Generate deps attribute for locally linked libraries
+		var deps []string
+		for _, linkedLib := range cmTarget.LinkedLibraries {
+			// Check if the linked library matches another target in this directory
+			if _, exists := targets[linkedLib]; exists {
+				deps = append(deps, ":"+linkedLib) // Use Bazel label syntax for local targets
+			}
+		}
+		if len(deps) > 0 {
+			r.SetAttr("deps", deps)
+		}
 
+		// Store linked libraries for dependency resolution (external libraries, includes, etc.)
 		if len(cmTarget.LinkedLibraries) > 0 {
 			r.SetPrivateAttr("cmake_linked_libraries", cmTarget.LinkedLibraries)
 		}
