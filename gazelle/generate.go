@@ -248,7 +248,8 @@ func generateRulesFromCMakeFile(args language.GenerateArgs, cmakeFilePath string
 
 		if r.Attr("srcs") != nil || r.Attr("hdrs") != nil { // Only add rule if it has sources/headers
 			res.Gen = append(res.Gen, r)
-			res.Empty = append(res.Empty, rule.NewRule(r.Kind(), r.Name()))
+			// Don't add empty rules for now to fix deps generation
+			// res.Empty = append(res.Empty, rule.NewRule(r.Kind(), r.Name()))
 			log.Printf("Generated %s %s in %s with srcs: %v, hdrs: %v, includes: %v, links: %v",
 				r.Kind(), r.Name(), args.Rel, finalSrcs, finalHdrs, cmTarget.IncludeDirectories, cmTarget.LinkedLibraries)
 		} else {

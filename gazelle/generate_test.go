@@ -126,18 +126,10 @@ func TestGenerateRules_SimpleCCProject(t *testing.T) {
 		// TODO: Add more checks, e.g. for Empty rules if necessary
 	}
 
-	// Check Empty rules (important for Gazelle's update mechanism)
-	if len(result.Empty) != len(expectedRules) {
-		t.Errorf("Expected %d empty rules, got %d.", len(expectedRules), len(result.Empty))
-	} else {
-		sort.Slice(result.Empty, func(i, j int) bool { return result.Empty[i].Name() < result.Empty[j].Name() })
-		for i, gotEmptyRule := range result.Empty {
-			expectedRule := expectedRules[i] // Compare against the main expected rules
-			if gotEmptyRule.Kind() != expectedRule.Kind() || gotEmptyRule.Name() != expectedRule.Name() {
-				t.Errorf("Empty rule %d: Expected %s %s, got %s %s",
-					i, expectedRule.Kind(), expectedRule.Name(), gotEmptyRule.Kind(), gotEmptyRule.Name())
-			}
-		}
+	// Check Empty rules - we don't generate empty rules currently since they interfere with deps generation
+	// This may change in the future if we need empty rules for Gazelle's update mechanism
+	if len(result.Empty) != 0 {
+		t.Errorf("Expected 0 empty rules, got %d.", len(result.Empty))
 	}
 }
 
@@ -145,73 +137,10 @@ func TestGenerateRules_DepsGeneration(t *testing.T) {
 	// Test that target_link_libraries generates correct deps attributes
 	projectRelDir := "testdata/simple_cc_project"
 
-	// Find the workspace root.
-	workspaceRoot, err := bazel.Runfile("") // Gets path to the current directory within the runfiles tree
-	if err != nil {
-		// Fallback for non-Bazel environments (go test)
-		// Find the workspace root by looking for go.mod
-		wd, err := filepath.Abs(".")
-		if err != nil {
-			t.Fatalf("Could not get working directory: %v", err)
-		}
-		// Walk up until we find go.mod
-		for {
-			if _, err := os.Stat(filepath.Join(wd, "go.mod")); err == nil {
-				workspaceRoot = wd
-				break
-			}
-			parent := filepath.Dir(wd)
-			if parent == wd {
-				t.Fatalf("Could not find workspace root (go.mod not found)")
-			}
-			wd = parent
-		}
-	}
-	
-	// Debug: list what's in the runfiles root
-	if files, err := os.ReadDir(workspaceRoot); err == nil {
-		var fileNames []string
-		for _, file := range files {
-			fileNames = append(fileNames, file.Name())
-		}
-		t.Logf("Workspace root %s contains: %v", workspaceRoot, fileNames)
-	}
-	
-	// Check if testdata dir exists
-	testdataDir := filepath.Join(workspaceRoot, "testdata")
-	if _, err := os.Stat(testdataDir); os.IsNotExist(err) {
-		t.Fatalf("testdata directory does not exist: %s", testdataDir)
-	}
-	
-	// List testdata contents
-	if files, err := os.ReadDir(testdataDir); err == nil {
-		var fileNames []string
-		for _, file := range files {
-			fileNames = append(fileNames, file.Name())
-		}
-		t.Logf("testdata directory contains: %v", fileNames)
-	}
-
 	args := createMockGenerateArgs(t,
 		projectRelDir,
 		[]string{"main.cc", "lib.cc", "lib.h", "CMakeLists.txt"},
 	)
-
-	// Debug: List what files are actually available
-	if _, err := os.Stat(args.Dir); os.IsNotExist(err) {
-		t.Fatalf("Test directory does not exist: %s", args.Dir)
-	}
-	
-	cmakeFile := filepath.Join(args.Dir, "CMakeLists.txt")
-	if _, err := os.Stat(cmakeFile); os.IsNotExist(err) {
-		// List files that do exist
-		files, _ := os.ReadDir(args.Dir)
-		var fileNames []string
-		for _, file := range files {
-			fileNames = append(fileNames, file.Name())
-		}
-		t.Fatalf("CMakeLists.txt not found at %s. Available files: %v", cmakeFile, fileNames)
-	}
 
 	result := GenerateRules(args)
 

@@ -1,6 +1,32 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
 
 cc_library(
+    name = "core",
+    srcs = [
+        "src/core.cpp",
+        "src/manager.cpp",
+    ],
+    includes = [
+        "include",
+        "third_party/include",
+    ],
+    deps = [":utils"],
+)
+
+cc_binary(
+    name = "main_app",
+    srcs = ["src/main.cpp"],
+    includes = [
+        "include",
+        "third_party/include",
+    ],
+    deps = [
+        ":core",
+        ":utils",
+    ],
+)
+
+cc_library(
     name = "plugin_system",
     srcs = [
         "plugins/loader.cpp",
@@ -23,6 +49,7 @@ cc_binary(
         "tests",
         "third_party/include",
     ],
+    deps = [":utils"],
 )
 
 cc_library(
@@ -31,27 +58,6 @@ cc_library(
         "src/helper.cpp",
         "src/utils.cpp",
     ],
-    includes = [
-        "include",
-        "third_party/include",
-    ],
-)
-
-cc_library(
-    name = "core",
-    srcs = [
-        "src/core.cpp",
-        "src/manager.cpp",
-    ],
-    includes = [
-        "include",
-        "third_party/include",
-    ],
-)
-
-cc_binary(
-    name = "main_app",
-    srcs = ["src/main.cpp"],
     includes = [
         "include",
         "third_party/include",
