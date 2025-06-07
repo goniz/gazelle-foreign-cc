@@ -388,13 +388,8 @@ func (l *cmakeLang) generateRulesFromTargetsWithRepo(args language.GenerateArgs,
 		for _, linkedLib := range cmTarget.LinkedLibraries {
 			// Check if the linked library matches another target in this directory
 			if targetNames[linkedLib] {
-				if externalRepo != "" {
-					// For external repositories, reference the target through the external repo
-					deps = append(deps, "@"+externalRepo+"//:"+linkedLib)
-				} else {
-					// For local targets, use local label syntax
-					deps = append(deps, ":"+linkedLib)
-				}
+				// For local targets, use local label syntax
+				deps = append(deps, ":"+linkedLib)
 			}
 		}
 		if len(deps) > 0 {
