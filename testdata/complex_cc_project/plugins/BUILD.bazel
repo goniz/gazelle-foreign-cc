@@ -1,0 +1,9 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
+cc_library(
+    name = "plugin_system",
+    srcs = [
+        "loader.cpp",
+        "plugin.cpp",
+    ],
+)

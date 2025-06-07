@@ -385,6 +385,7 @@ func (l *cmakeLang) generateRulesFromTargetsWithRepo(args language.GenerateArgs,
 
 		// Generate deps attribute for locally linked libraries
 		var deps []string
+		log.Printf("Target %s: LinkedLibraries = %v, targetNames keys = %v", cmTarget.Name, cmTarget.LinkedLibraries, getMapKeys(targetNames))
 		for _, linkedLib := range cmTarget.LinkedLibraries {
 			// Check if the linked library matches another target in this directory
 			if targetNames[linkedLib] {
@@ -395,10 +396,16 @@ func (l *cmakeLang) generateRulesFromTargetsWithRepo(args language.GenerateArgs,
 					// For local targets, use local label syntax
 					deps = append(deps, ":"+linkedLib)
 				}
+				log.Printf("Added dependency: %s -> %s", cmTarget.Name, linkedLib)
+			} else {
+				log.Printf("Skipped dependency: %s -> %s (not in local targets)", cmTarget.Name, linkedLib)
 			}
 		}
 		if len(deps) > 0 {
 			r.SetAttr("deps", deps)
+			log.Printf("Set deps attribute for %s: %v", cmTarget.Name, deps)
+		} else {
+			log.Printf("No deps to set for %s", cmTarget.Name)
 		}
 
 		// Store linked libraries for dependency resolution
@@ -431,6 +438,15 @@ func (l *cmakeLang) fileExistsInDir(filename, dir string) bool {
 	fullPath := filepath.Join(dir, filename)
 	_, err := os.Stat(fullPath)
 	return err == nil
+}
+
+// Helper function to get map keys for debugging
+func getMapKeys(m map[string]bool) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	return keys
 }
 
 // UpdateRules is called to update existing rules in a BUILD file.

@@ -358,11 +358,31 @@ func (api *CMakeFileAPI) GenerateFromAPI(relativeDir string) ([]*gazelle.CMakeTa
 
 		// Extract linked libraries from link information
 		if target.Link != nil {
+			// Check both Libraries and CommandFragments with role "libraries"
 			for _, lib := range target.Link.Libraries {
 				// Parse library names from fragments
 				libName := strings.TrimSpace(lib.Fragment)
 				if libName != "" && !strings.HasPrefix(libName, "-") {
 					cmakeTarget.LinkedLibraries = appendIfMissing(cmakeTarget.LinkedLibraries, libName)
+				}
+			}
+			
+			// Also check CommandFragments for libraries role
+			for _, cmdFrag := range target.Link.CommandFragments {
+				if cmdFrag.Role == "libraries" {
+					libName := strings.TrimSpace(cmdFrag.Fragment)
+					if libName != "" && !strings.HasPrefix(libName, "-") {
+						// Remove lib prefix and .a/.so suffixes if present
+						if strings.HasPrefix(libName, "lib") && (strings.HasSuffix(libName, ".a") || strings.HasSuffix(libName, ".so")) {
+							libName = strings.TrimPrefix(libName, "lib")
+							if strings.HasSuffix(libName, ".a") {
+								libName = strings.TrimSuffix(libName, ".a")
+							} else if strings.HasSuffix(libName, ".so") {
+								libName = strings.TrimSuffix(libName, ".so")
+							}
+						}
+						cmakeTarget.LinkedLibraries = appendIfMissing(cmakeTarget.LinkedLibraries, libName)
+					}
 				}
 			}
 		}

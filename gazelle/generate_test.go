@@ -51,7 +51,7 @@ func createMockGenerateArgs(t *testing.T, relDir string, files []string) languag
 	return language.GenerateArgs{
 		Config:       c,
 		Dir:          absDir, // Absolute path to the directory being processed
-		Rel:          filepath.Base(relDir), // Relative path from repo root (or a common root for testdata)
+		Rel:          relDir, // Relative path from repo root
 		RegularFiles: files,
 		File:         nil,        // Represents the existing BUILD file, nil if generating anew
 	}
@@ -145,10 +145,73 @@ func TestGenerateRules_DepsGeneration(t *testing.T) {
 	// Test that target_link_libraries generates correct deps attributes
 	projectRelDir := "testdata/simple_cc_project"
 
+	// Find the workspace root.
+	workspaceRoot, err := bazel.Runfile("") // Gets path to the current directory within the runfiles tree
+	if err != nil {
+		// Fallback for non-Bazel environments (go test)
+		// Find the workspace root by looking for go.mod
+		wd, err := filepath.Abs(".")
+		if err != nil {
+			t.Fatalf("Could not get working directory: %v", err)
+		}
+		// Walk up until we find go.mod
+		for {
+			if _, err := os.Stat(filepath.Join(wd, "go.mod")); err == nil {
+				workspaceRoot = wd
+				break
+			}
+			parent := filepath.Dir(wd)
+			if parent == wd {
+				t.Fatalf("Could not find workspace root (go.mod not found)")
+			}
+			wd = parent
+		}
+	}
+	
+	// Debug: list what's in the runfiles root
+	if files, err := os.ReadDir(workspaceRoot); err == nil {
+		var fileNames []string
+		for _, file := range files {
+			fileNames = append(fileNames, file.Name())
+		}
+		t.Logf("Workspace root %s contains: %v", workspaceRoot, fileNames)
+	}
+	
+	// Check if testdata dir exists
+	testdataDir := filepath.Join(workspaceRoot, "testdata")
+	if _, err := os.Stat(testdataDir); os.IsNotExist(err) {
+		t.Fatalf("testdata directory does not exist: %s", testdataDir)
+	}
+	
+	// List testdata contents
+	if files, err := os.ReadDir(testdataDir); err == nil {
+		var fileNames []string
+		for _, file := range files {
+			fileNames = append(fileNames, file.Name())
+		}
+		t.Logf("testdata directory contains: %v", fileNames)
+	}
+
 	args := createMockGenerateArgs(t,
 		projectRelDir,
 		[]string{"main.cc", "lib.cc", "lib.h", "CMakeLists.txt"},
 	)
+
+	// Debug: List what files are actually available
+	if _, err := os.Stat(args.Dir); os.IsNotExist(err) {
+		t.Fatalf("Test directory does not exist: %s", args.Dir)
+	}
+	
+	cmakeFile := filepath.Join(args.Dir, "CMakeLists.txt")
+	if _, err := os.Stat(cmakeFile); os.IsNotExist(err) {
+		// List files that do exist
+		files, _ := os.ReadDir(args.Dir)
+		var fileNames []string
+		for _, file := range files {
+			fileNames = append(fileNames, file.Name())
+		}
+		t.Fatalf("CMakeLists.txt not found at %s. Available files: %v", cmakeFile, fileNames)
+	}
 
 	result := GenerateRules(args)
 
