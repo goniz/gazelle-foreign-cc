@@ -9,6 +9,14 @@ load("@rules_cc//cc:defs.bzl", "cc_library")
 # rules generated from the CMakeLists.txt found in the @libzmq external repository.
 
 cc_library(
+    name = "libzmq",
+    hdrs = [
+        "@libzmq//:include/zmq.h",
+        "@libzmq//:include/zmq_utils.h",
+    ],
+)
+
+cc_library(
     name = "libzmq-static",
     hdrs = [
         "@libzmq//:include/zmq.h",
@@ -273,13 +281,5 @@ cc_library(
     includes = [
         "@libzmq//.cmake-build",
         "@libzmq//include",
-    ],
-)
-
-cc_library(
-    name = "libzmq",
-    hdrs = [
-        "@libzmq//:include/zmq.h",
-        "@libzmq//:include/zmq_utils.h",
     ],
 )
