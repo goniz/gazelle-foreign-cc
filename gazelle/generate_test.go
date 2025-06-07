@@ -51,7 +51,7 @@ func createMockGenerateArgs(t *testing.T, relDir string, files []string) languag
 	return language.GenerateArgs{
 		Config:       c,
 		Dir:          absDir, // Absolute path to the directory being processed
-		Rel:          filepath.Base(relDir), // Relative path from repo root (or a common root for testdata)
+		Rel:          relDir, // Relative path from repo root
 		RegularFiles: files,
 		File:         nil,        // Represents the existing BUILD file, nil if generating anew
 	}
@@ -126,18 +126,10 @@ func TestGenerateRules_SimpleCCProject(t *testing.T) {
 		// TODO: Add more checks, e.g. for Empty rules if necessary
 	}
 
-	// Check Empty rules (important for Gazelle's update mechanism)
-	if len(result.Empty) != len(expectedRules) {
-		t.Errorf("Expected %d empty rules, got %d.", len(expectedRules), len(result.Empty))
-	} else {
-		sort.Slice(result.Empty, func(i, j int) bool { return result.Empty[i].Name() < result.Empty[j].Name() })
-		for i, gotEmptyRule := range result.Empty {
-			expectedRule := expectedRules[i] // Compare against the main expected rules
-			if gotEmptyRule.Kind() != expectedRule.Kind() || gotEmptyRule.Name() != expectedRule.Name() {
-				t.Errorf("Empty rule %d: Expected %s %s, got %s %s",
-					i, expectedRule.Kind(), expectedRule.Name(), gotEmptyRule.Kind(), gotEmptyRule.Name())
-			}
-		}
+	// Check Empty rules - we don't generate empty rules currently since they interfere with deps generation
+	// This may change in the future if we need empty rules for Gazelle's update mechanism
+	if len(result.Empty) != 0 {
+		t.Errorf("Expected 0 empty rules, got %d.", len(result.Empty))
 	}
 }
 

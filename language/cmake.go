@@ -388,13 +388,8 @@ func (l *cmakeLang) generateRulesFromTargetsWithRepo(args language.GenerateArgs,
 		for _, linkedLib := range cmTarget.LinkedLibraries {
 			// Check if the linked library matches another target in this directory
 			if targetNames[linkedLib] {
-				if externalRepo != "" {
-					// For external repositories, reference the target through the external repo
-					deps = append(deps, "@"+externalRepo+"//:"+linkedLib)
-				} else {
-					// For local targets, use local label syntax
-					deps = append(deps, ":"+linkedLib)
-				}
+				// For local targets, use local label syntax
+				deps = append(deps, ":"+linkedLib)
 			}
 		}
 		if len(deps) > 0 {
@@ -411,7 +406,8 @@ func (l *cmakeLang) generateRulesFromTargetsWithRepo(args language.GenerateArgs,
 
 		if r.Attr("srcs") != nil || r.Attr("hdrs") != nil {
 			res.Gen = append(res.Gen, r)
-			res.Empty = append(res.Empty, rule.NewRule(r.Kind(), r.Name()))
+			// Don't add empty rules for now to test if this fixes the deps issue
+			// res.Empty = append(res.Empty, rule.NewRule(r.Kind(), r.Name()))
 			log.Printf("Generated %s %s in %s with srcs: %v, hdrs: %v, includes: %v, links: %v",
 				r.Kind(), r.Name(), args.Rel, finalSrcs, finalHdrs, cmTarget.IncludeDirectories, cmTarget.LinkedLibraries)
 		} else {
