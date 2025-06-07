@@ -127,7 +127,7 @@ cc_library(
         "@libzmq//:src/zmtp_engine.cpp",
     ],
     hdrs = [
-        "@libzmq//:.cmake-build/platform.hpp",
+        "@libzmq//:src/platform.hpp",
         "@libzmq//:external/sha1/sha1.h",
         "@libzmq//:src/address.hpp",
         "@libzmq//:src/array.hpp",
@@ -272,9 +272,9 @@ cc_library(
         "@libzmq//:src/zmtp_engine.hpp",
     ],
     includes = [
-        "@libzmq//.cmake-build",
         "@libzmq//include",
     ],
+    deps = ["@libzmq//:platform_hpp"],
 )
 
 cc_library(

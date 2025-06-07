@@ -1,1 +1,4 @@
-exports_files(["external_repo_buildfile.BUILD"])
+exports_files([
+    "external_repo_buildfile.BUILD",
+    "libzmq_platform.hpp",
+])
