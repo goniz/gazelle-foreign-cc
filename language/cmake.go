@@ -300,6 +300,12 @@ func (l *cmakeLang) generateRulesFromTargets(args language.GenerateArgs, cmakeTa
 // generateRulesFromTargetsWithRepo converts CMakeTarget objects to Bazel rules, with optional external repository context
 func (l *cmakeLang) generateRulesFromTargetsWithRepo(args language.GenerateArgs, cmakeTargets []*gazelle.CMakeTarget, externalRepo string) language.GenerateResult {
 	res := language.GenerateResult{}
+	
+	// Create a map of target names for quick lookup to identify local targets
+	targetNames := make(map[string]bool)
+	for _, cmTarget := range cmakeTargets {
+		targetNames[cmTarget.Name] = true
+	}
 
 	for _, cmTarget := range cmakeTargets {
 		var r *rule.Rule
@@ -375,6 +381,24 @@ func (l *cmakeLang) generateRulesFromTargetsWithRepo(args language.GenerateArgs,
 					r.SetAttr("includes", includes)
 				}
 			}
+		}
+
+		// Generate deps attribute for locally linked libraries
+		var deps []string
+		for _, linkedLib := range cmTarget.LinkedLibraries {
+			// Check if the linked library matches another target in this directory
+			if targetNames[linkedLib] {
+				if externalRepo != "" {
+					// For external repositories, reference the target through the external repo
+					deps = append(deps, "@"+externalRepo+"//:"+linkedLib)
+				} else {
+					// For local targets, use local label syntax
+					deps = append(deps, ":"+linkedLib)
+				}
+			}
+		}
+		if len(deps) > 0 {
+			r.SetAttr("deps", deps)
 		}
 
 		// Store linked libraries for dependency resolution

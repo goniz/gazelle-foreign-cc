@@ -141,6 +141,92 @@ func TestGenerateRules_SimpleCCProject(t *testing.T) {
 	}
 }
 
+func TestGenerateRules_DepsGeneration(t *testing.T) {
+	// Test that target_link_libraries generates correct deps attributes
+	projectRelDir := "testdata/simple_cc_project"
+
+	args := createMockGenerateArgs(t,
+		projectRelDir,
+		[]string{"main.cc", "lib.cc", "lib.h", "CMakeLists.txt"},
+	)
+
+	result := GenerateRules(args)
+
+	// Find the "app" rule
+	var appRule *rule.Rule
+	for _, r := range result.Gen {
+		if r.Name() == "app" {
+			appRule = r
+			break
+		}
+	}
+
+	if appRule == nil {
+		t.Fatal("Expected to find 'app' rule")
+	}
+
+	// Verify that the app rule has deps attribute set to the library
+	deps := appRule.AttrStrings("deps")
+	expectedDeps := []string{":my_lib"}
+	if !reflect.DeepEqual(deps, expectedDeps) {
+		t.Errorf("Expected deps %v for rule 'app', got %v", expectedDeps, deps)
+	}
+}
+
+func TestGenerateRules_ComplexCCProject_DepsGeneration(t *testing.T) {
+	// Test that complex target_link_libraries generates correct deps attributes
+	projectRelDir := "testdata/complex_cc_project"
+
+	args := createMockGenerateArgs(t,
+		projectRelDir,
+		[]string{"src/main.cpp", "src/core.cpp", "src/manager.cpp", "src/utils.cpp", "src/helper.cpp", "tests/test_main.cpp", "tests/test_utils.cpp", "CMakeLists.txt"},
+	)
+
+	result := GenerateRules(args)
+
+	// Create a map of rules by name for easier testing
+	rulesByName := make(map[string]*rule.Rule)
+	for _, r := range result.Gen {
+		rulesByName[r.Name()] = r
+	}
+
+	// Test core library dependencies
+	coreRule := rulesByName["core"]
+	if coreRule == nil {
+		t.Fatal("Expected to find 'core' rule")
+	}
+	coreDeps := coreRule.AttrStrings("deps")
+	expectedCoreDeps := []string{":utils"}
+	if !reflect.DeepEqual(coreDeps, expectedCoreDeps) {
+		t.Errorf("Expected deps %v for rule 'core', got %v", expectedCoreDeps, coreDeps)
+	}
+
+	// Test main_app dependencies (should link to both core and utils)
+	mainAppRule := rulesByName["main_app"]
+	if mainAppRule == nil {
+		t.Fatal("Expected to find 'main_app' rule")
+	}
+	mainAppDeps := mainAppRule.AttrStrings("deps")
+	expectedMainAppDeps := []string{":core", ":utils"}
+	// Sort both to ensure consistent comparison
+	sort.Strings(mainAppDeps)
+	sort.Strings(expectedMainAppDeps)
+	if !reflect.DeepEqual(mainAppDeps, expectedMainAppDeps) {
+		t.Errorf("Expected deps %v for rule 'main_app', got %v", expectedMainAppDeps, mainAppDeps)
+	}
+
+	// Test test_runner dependencies 
+	testRunnerRule := rulesByName["test_runner"]
+	if testRunnerRule == nil {
+		t.Fatal("Expected to find 'test_runner' rule")
+	}
+	testRunnerDeps := testRunnerRule.AttrStrings("deps")
+	expectedTestRunnerDeps := []string{":utils"}
+	if !reflect.DeepEqual(testRunnerDeps, expectedTestRunnerDeps) {
+		t.Errorf("Expected deps %v for rule 'test_runner', got %v", expectedTestRunnerDeps, testRunnerDeps)
+	}
+}
+
 // TODO: Add more test cases:
 // - CMakeLists.txt with no targets
 // - CMakeLists.txt with targets but no matching source files in args.RegularFiles
