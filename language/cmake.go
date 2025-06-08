@@ -109,6 +109,11 @@ func (l *cmakeLang) Kinds() map[string]rule.KindInfo {
 			MergeableAttrs: map[string]bool{"srcs": true, "deps": true},
 			ResolveAttrs:   map[string]bool{"deps": true},
 		},
+		"cmake_configure_file": {
+			NonEmptyAttrs:  map[string]bool{"src": true, "out": true},
+			MergeableAttrs: map[string]bool{"defines": true},
+			ResolveAttrs:   map[string]bool{},
+		},
 	}
 }
 
@@ -118,6 +123,10 @@ func (l *cmakeLang) Loads() []rule.LoadInfo {
 		{
 			Name:    "@rules_cc//cc:defs.bzl",
 			Symbols: []string{"cc_library", "cc_binary", "cc_test"},
+		},
+		{
+			Name:    "//rules:cmake_configure_file.bzl",
+			Symbols: []string{"cmake_configure_file"},
 		},
 	}
 }
@@ -294,7 +303,21 @@ func (l *cmakeLang) findRepoViaRunfiles(repoName string) string {
 
 // generateRulesFromTargets converts CMakeTarget objects to Bazel rules
 func (l *cmakeLang) generateRulesFromTargets(args language.GenerateArgs, cmakeTargets []*gazelle.CMakeTarget) language.GenerateResult {
-	return l.generateRulesFromTargetsWithRepo(args, cmakeTargets, "")
+	// First generate rules from CMake targets
+	result := l.generateRulesFromTargetsWithRepo(args, cmakeTargets, "")
+	
+	// Additionally, parse configure_file commands from CMakeLists.txt using regex parsing
+	cfg := gazelle.GetCMakeConfig(args.Config)
+	cmakeFilePath := filepath.Join(args.Dir, "CMakeLists.txt")
+	configureFileResult := gazelle.ParseConfigureFileCommands(args, cmakeFilePath, cfg)
+	
+	// Merge the configure_file rules with the target-based rules
+	result.Gen = append(result.Gen, configureFileResult.Gen...)
+	
+	// Update imports array to match the new length
+	result.Imports = make([]interface{}, len(result.Gen))
+	
+	return result
 }
 
 // generateRulesFromTargetsWithRepo converts CMakeTarget objects to Bazel rules, with optional external repository context

@@ -1,6 +1,7 @@
 package gazelle
 
 import (
+	"log"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -225,3 +226,79 @@ func TestGenerateRules_ComplexCCProject_DepsGeneration(t *testing.T) {
 // - CMakeLists.txt with only add_library or only add_executable
 // - File names with unusual characters (if your regexes are too simple)
 // - Case variations in add_library/add_executable (already handled by (?i) in regex)
+
+func TestGenerateRules_ConfigureFile(t *testing.T) {
+	// Test the configure_file parsing functionality
+	relDir := "testdata/configure_file_example"
+	
+	// Files in the test directory
+	files := []string{
+		"CMakeLists.txt",
+		"config.h.in",
+		"src/lib.cpp",
+		"src/main.cpp",
+	}
+	
+	args := createMockGenerateArgs(t, relDir, files)
+	
+	result := GenerateRules(args)
+	
+	// Verify that rules were generated
+	if len(result.Gen) == 0 {
+		t.Fatal("Expected rules to be generated, but got none")
+	}
+	
+	// Create a map for easier lookup
+	rulesByName := make(map[string]*rule.Rule)
+	for _, r := range result.Gen {
+		rulesByName[r.Name()] = r
+	}
+	
+	// Check that cmake_configure_file rule was generated
+	configRule := rulesByName["config_h"]
+	if configRule == nil {
+		t.Fatal("Expected to find 'config_h' cmake_configure_file rule")
+	}
+	
+	if configRule.Kind() != "cmake_configure_file" {
+		t.Errorf("Expected rule kind 'cmake_configure_file', got '%s'", configRule.Kind())
+	}
+	
+	// Check attributes
+	src := configRule.AttrString("src")
+	if src != "config.h.in" {
+		t.Errorf("Expected src 'config.h.in', got '%s'", src)
+	}
+	
+	out := configRule.AttrString("out")
+	if out != "config.h" {
+		t.Errorf("Expected out 'config.h', got '%s'", out)
+	}
+	
+	// Check that defines were set (stored as a private attribute)
+	if !hasDefines(configRule) {
+		t.Error("Expected defines to be set, but rule does not have defines attribute")
+	}
+	
+	// Check that regular cc_library and cc_binary rules were also generated
+	libRule := rulesByName["mylib"]
+	if libRule == nil {
+		t.Error("Expected to find 'mylib' cc_library rule")
+	} else if libRule.Kind() != "cc_library" {
+		t.Errorf("Expected mylib to be cc_library, got %s", libRule.Kind())
+	}
+	
+	appRule := rulesByName["app"]
+	if appRule == nil {
+		t.Error("Expected to find 'app' cc_binary rule")
+	} else if appRule.Kind() != "cc_binary" {
+		t.Errorf("Expected app to be cc_binary, got %s", appRule.Kind())
+	}
+	
+	log.Printf("ConfigureFile test completed successfully. Generated %d rules.", len(result.Gen))
+}
+
+// Helper function to check if a rule has defines attribute set
+func hasDefines(r *rule.Rule) bool {
+	return r.Attr("defines") != nil
+}
