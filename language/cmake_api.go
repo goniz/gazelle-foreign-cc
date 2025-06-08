@@ -162,6 +162,7 @@ func (api *CMakeFileAPI) CreateQuery() error {
 		"codemodel-v2",
 		"cache-v2",
 		"toolchains-v1",
+		"cmakeFiles-v1",
 	}
 
 	for _, query := range queries {
@@ -174,145 +175,99 @@ func (api *CMakeFileAPI) CreateQuery() error {
 	return nil
 }
 
-// DetectConfigureFileCommands detects configure_file commands using a simpler approach
+// DetectConfigureFileCommands detects configure_file commands using CMake File API
 func (api *CMakeFileAPI) DetectConfigureFileCommands() ([]*gazelle.CMakeConfigureFile, error) {
-	// Create a temporary CMake script that parses CMakeLists.txt 
-	scriptPath := filepath.Join(api.buildDir, "extract_configure_files.cmake")
+	// First ensure we have File API responses available
+	if err := api.CreateQuery(); err != nil {
+		return nil, fmt.Errorf("failed to create File API query: %w", err)
+	}
 	
-	script := fmt.Sprintf(`
-# CMake script to extract configure_file commands and variables
-cmake_minimum_required(VERSION 3.15)
-
-# Read CMakeLists.txt
-set(CMAKELISTS_PATH "%s/CMakeLists.txt")
-if(NOT EXISTS "${CMAKELISTS_PATH}")
-    message("CMakeLists.txt not found")
-    return()
-endif()
-
-file(READ "${CMAKELISTS_PATH}" CONTENT)
-
-# Simple regex-based extraction of configure_file commands
-string(REGEX MATCHALL "configure_file[ \t]*\\(([^)]*)\\)" CONFIGURE_FILE_MATCHES "${CONTENT}")
-
-# Output file path
-set(OUTPUT_FILE "%s/configure_files.txt")
-file(WRITE "${OUTPUT_FILE}" "")
-
-foreach(MATCH ${CONFIGURE_FILE_MATCHES})
-    # Extract arguments from configure_file(input output [options])
-    string(REGEX REPLACE "configure_file[ \t]*\\([ \t]*([^ \t]+)[ \t]+([^ \t)]+).*\\)" "\\1;\\2" ARGS "${MATCH}")
-    list(GET ARGS 0 INPUT_FILE)
-    list(GET ARGS 1 OUTPUT_FILE_NAME)
-    
-    # Clean up quotes
-    string(REGEX REPLACE "\"" "" INPUT_FILE "${INPUT_FILE}")
-    string(REGEX REPLACE "\"" "" OUTPUT_FILE_NAME "${OUTPUT_FILE_NAME}")
-    
-    file(APPEND "${OUTPUT_FILE}" "CONFIGURE_FILE|${INPUT_FILE}|${OUTPUT_FILE_NAME}\n")
-endforeach()
-
-# Extract set() commands for variables
-string(REGEX MATCHALL "set[ \t]*\\(([^)]*)\\)" SET_MATCHES "${CONTENT}")
-
-foreach(MATCH ${SET_MATCHES})
-    # Extract arguments from set(var value)
-    string(REGEX REPLACE "set[ \t]*\\([ \t]*([^ \t]+)[ \t]+([^ \t)]+).*\\)" "\\1;\\2" ARGS "${MATCH}")
-    list(LENGTH ARGS ARG_COUNT)
-    if(ARG_COUNT EQUAL 2)
-        list(GET ARGS 0 VAR_NAME)
-        list(GET ARGS 1 VAR_VALUE)
-        
-        # Clean up quotes
-        string(REGEX REPLACE "\"" "" VAR_NAME "${VAR_NAME}")
-        string(REGEX REPLACE "\"" "" VAR_VALUE "${VAR_VALUE}")
-        
-        file(APPEND "${OUTPUT_FILE}" "SET|${VAR_NAME}|${VAR_VALUE}\n")
-    endif()
-endforeach()
-`, api.sourceDir, api.buildDir)
-
-	if err := ioutil.WriteFile(scriptPath, []byte(script), 0644); err != nil {
-		return nil, fmt.Errorf("failed to create configure file extraction script: %w", err)
+	if err := api.Configure(); err != nil {
+		return nil, fmt.Errorf("failed to run CMake configure: %w", err)
 	}
-
-	// Run cmake with our custom script
-	args := []string{"-P", scriptPath}
-	cmd := exec.Command(api.cmakeExe, args...)
-	cmd.Dir = api.buildDir
-
-	if err := cmd.Run(); err != nil {
-		log.Printf("Warning: failed to extract configure_file commands: %v", err)
-		return nil, err
+	
+	// Read File API responses
+	_, _, _, err := api.ReadAPIResponse()
+	if err != nil {
+		return nil, fmt.Errorf("failed to read File API response: %w", err)
 	}
-
-	// Read the configure_files.txt output
-	outputFile := filepath.Join(api.buildDir, "configure_files.txt")
-	if _, err := os.Stat(outputFile); os.IsNotExist(err) {
+	
+	// Use cmakeFiles query to get input files, which includes .in files for configure_file
+	replyDir := filepath.Join(api.buildDir, ".cmake", "api", "v1", "reply")
+	
+	// Find cmakeFiles response
+	cmakeFilesPattern := filepath.Join(replyDir, "cmakeFiles-*.json")
+	cmakeFilesFiles, err := filepath.Glob(cmakeFilesPattern)
+	if err != nil || len(cmakeFilesFiles) == 0 {
+		log.Printf("No cmakeFiles response found, trying to get it...")
+		// Create cmakeFiles query and try again
+		queryDir := filepath.Join(api.buildDir, ".cmake", "api", "v1", "query")
+		cmakeFilesQuery := filepath.Join(queryDir, "cmakeFiles-v1")
+		if err := ioutil.WriteFile(cmakeFilesQuery, []byte{}, 0644); err == nil {
+			// Re-run configure to get cmakeFiles response
+			if err := api.Configure(); err == nil {
+				cmakeFilesFiles, _ = filepath.Glob(cmakeFilesPattern)
+			}
+		}
+	}
+	
+	if len(cmakeFilesFiles) == 0 {
+		log.Printf("cmakeFiles response not available, cannot detect configure_file commands via File API")
 		return []*gazelle.CMakeConfigureFile{}, nil
 	}
-
-	content, err := ioutil.ReadFile(outputFile)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read configure files output: %w", err)
-	}
-
-	// Parse the output
-	var configureFiles []*gazelle.CMakeConfigureFile
-	variables := make(map[string]string)
 	
-	lines := strings.Split(string(content), "\n")
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if line == "" {
-			continue
-		}
-		
-		parts := strings.Split(line, "|")
-		if len(parts) < 3 {
-			continue
-		}
-		
-		switch parts[0] {
-		case "SET":
-			if len(parts) >= 3 {
-				variables[parts[1]] = parts[2]
+	// Read cmakeFiles response
+	cmakeFilesData, err := ioutil.ReadFile(cmakeFilesFiles[0])
+	if err != nil {
+		return nil, fmt.Errorf("failed to read cmakeFiles response: %w", err)
+	}
+	
+	var cmakeFiles struct {
+		Inputs []struct {
+			Path        string `json:"path"`
+			IsGenerated bool   `json:"isGenerated,omitempty"`
+		} `json:"inputs"`
+	}
+	
+	if err := json.Unmarshal(cmakeFilesData, &cmakeFiles); err != nil {
+		return nil, fmt.Errorf("failed to parse cmakeFiles response: %w", err)
+	}
+	
+	// Look for .in files which are typically configure_file inputs
+	var configureFiles []*gazelle.CMakeConfigureFile
+	for _, input := range cmakeFiles.Inputs {
+		if strings.HasSuffix(input.Path, ".in") && !input.IsGenerated {
+			// This is likely a configure_file input
+			inputFile := input.Path
+			if filepath.IsAbs(inputFile) {
+				// Make relative to source directory
+				if rel, err := filepath.Rel(api.sourceDir, inputFile); err == nil {
+					inputFile = rel
+				}
 			}
-		case "CONFIGURE_FILE":
-			if len(parts) >= 3 {
-				inputFile := parts[1]
-				outputFile := parts[2]
-				
-				// Generate rule name
-				ruleName := strings.ReplaceAll(strings.ReplaceAll(outputFile, ".", "_"), "/", "_")
-				if ruleName == "" {
-					ruleName = "config_file"
-				}
-				
-				// Combine detected variables with defines
-				configVars := make(map[string]string)
-				for k, v := range variables {
-					configVars[k] = v
-				}
-				for k, v := range api.cmakeDefines {
-					configVars[k] = v
-				}
-				
-				// Add standard CMake variables
-				if _, exists := configVars["CMAKE_CURRENT_SOURCE_DIR"]; !exists {
-					configVars["CMAKE_CURRENT_SOURCE_DIR"] = "."
-				}
-				if _, exists := configVars["PROJECT_NAME"]; !exists {
-					configVars["PROJECT_NAME"] = "project"
-				}
-				
-				configureFiles = append(configureFiles, &gazelle.CMakeConfigureFile{
-					Name:       ruleName,
-					InputFile:  inputFile,
-					OutputFile: outputFile,
-					Variables:  configVars,
-				})
+			
+			// Infer output file by removing .in suffix
+			outputFile := strings.TrimSuffix(filepath.Base(inputFile), ".in")
+			
+			// Generate rule name from output file
+			ruleName := strings.ReplaceAll(outputFile, ".", "_")
+			
+			// Default variables - in a real implementation we would get these from cache or other API responses
+			configVars := make(map[string]string)
+			configVars["CMAKE_CURRENT_SOURCE_DIR"] = "."
+			configVars["PROJECT_NAME"] = "project"
+			
+			// Add any cmake defines from api
+			for key, value := range api.cmakeDefines {
+				configVars[key] = value
 			}
+			
+			configureFiles = append(configureFiles, &gazelle.CMakeConfigureFile{
+				Name:       ruleName,
+				InputFile:  inputFile,
+				OutputFile: outputFile,
+				Variables:  configVars,
+			})
 		}
 	}
 	
