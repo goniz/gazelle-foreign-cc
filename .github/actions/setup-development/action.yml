@@ -1,0 +1,30 @@
+name: 'Setup Development Environment'
+description: 'Set up Go, Bazel, and CMake for development'
+inputs:
+  bazelrc:
+    description: 'Bazel configuration'
+    required: false
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Go
+      uses: actions/setup-go@v5
+
+    - name: Set up Bazel
+      uses: bazel-contrib/setup-bazel@0.14.0
+      with:
+        bazelrc: ${{ inputs.bazelrc }}
+
+    - name: Install CMake
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cmake
+      shell: bash
+
+    - name: Verify setup
+      run: |
+        echo "Go version: $(go version)"
+        echo "CMake version: $(cmake --version | head -1)"
+        echo "Bazel version: $(bazel --version)"
+        echo "Setup verification complete"
+      shell: bash

@@ -29,6 +29,11 @@ jobs:
         with:
           fetch-depth: 1
 
+      - name: Setup development environment
+        uses: ./.github/actions/setup-development
+        with:
+          bazelrc: ${{ secrets.BUILDBUDDY_BAZELRC }}
+
       - name: Run Claude PR Action
         uses: anthropics/claude-code-action@beta
         with:
