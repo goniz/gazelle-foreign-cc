@@ -306,18 +306,57 @@ func (l *cmakeLang) generateRulesFromTargets(args language.GenerateArgs, cmakeTa
 	// First generate rules from CMake targets
 	result := l.generateRulesFromTargetsWithRepo(args, cmakeTargets, "")
 	
-	// Additionally, parse configure_file commands from CMakeLists.txt using regex parsing
+	// Additionally, detect configure_file commands using CMake File API approach
 	cfg := gazelle.GetCMakeConfig(args.Config)
-	cmakeFilePath := filepath.Join(args.Dir, "CMakeLists.txt")
-	configureFileResult := gazelle.ParseConfigureFileCommands(args, cmakeFilePath, cfg)
+	buildDir := filepath.Join(args.Dir, ".cmake-build")
 	
-	// Merge the configure_file rules with the target-based rules
-	result.Gen = append(result.Gen, configureFileResult.Gen...)
+	// Use CMake File API to detect configure_file commands
+	api := NewCMakeFileAPI(args.Dir, buildDir, cfg.CMakeExecutable, cfg.CMakeDefines)
+	configureFiles, err := api.DetectConfigureFileCommands()
+	if err != nil {
+		log.Printf("CMake File API configure_file detection failed for %s: %v", args.Rel, err)
+		// Fallback to empty list - don't use regex parsing
+		configureFiles = []*gazelle.CMakeConfigureFile{}
+	}
+	
+	// Generate cmake_configure_file rules from detected configure_file commands
+	for _, configFile := range configureFiles {
+		// Check if the input file exists in the current directory
+		if !fileExistsInRegularFiles(configFile.InputFile, args.RegularFiles) {
+			log.Printf("Input file %s for configure_file not found in current directory, skipping.", configFile.InputFile)
+			continue
+		}
+		
+		r := rule.NewRule("cmake_configure_file", configFile.Name)
+		r.SetAttr("src", configFile.InputFile)
+		r.SetAttr("out", configFile.OutputFile)
+		
+		if len(configFile.Variables) > 0 {
+			r.SetAttr("defines", configFile.Variables)
+		}
+		
+		// Store the output file name for reference by other rules
+		r.SetPrivateAttr("cmake_configure_output", configFile.OutputFile)
+		
+		result.Gen = append(result.Gen, r)
+		log.Printf("Generated cmake_configure_file %s in %s: %s -> %s with defines: %v",
+			r.Name(), args.Rel, configFile.InputFile, configFile.OutputFile, configFile.Variables)
+	}
 	
 	// Update imports array to match the new length
 	result.Imports = make([]interface{}, len(result.Gen))
 	
 	return result
+}
+
+// Helper function to check if file exists in regular files
+func fileExistsInRegularFiles(filename string, regularFiles []string) bool {
+	for _, file := range regularFiles {
+		if file == filename {
+			return true
+		}
+	}
+	return false
 }
 
 // generateRulesFromTargetsWithRepo converts CMakeTarget objects to Bazel rules, with optional external repository context

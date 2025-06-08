@@ -174,6 +174,151 @@ func (api *CMakeFileAPI) CreateQuery() error {
 	return nil
 }
 
+// DetectConfigureFileCommands detects configure_file commands using a simpler approach
+func (api *CMakeFileAPI) DetectConfigureFileCommands() ([]*gazelle.CMakeConfigureFile, error) {
+	// Create a temporary CMake script that parses CMakeLists.txt 
+	scriptPath := filepath.Join(api.buildDir, "extract_configure_files.cmake")
+	
+	script := fmt.Sprintf(`
+# CMake script to extract configure_file commands and variables
+cmake_minimum_required(VERSION 3.15)
+
+# Read CMakeLists.txt
+set(CMAKELISTS_PATH "%s/CMakeLists.txt")
+if(NOT EXISTS "${CMAKELISTS_PATH}")
+    message("CMakeLists.txt not found")
+    return()
+endif()
+
+file(READ "${CMAKELISTS_PATH}" CONTENT)
+
+# Simple regex-based extraction of configure_file commands
+string(REGEX MATCHALL "configure_file[ \t]*\\(([^)]*)\\)" CONFIGURE_FILE_MATCHES "${CONTENT}")
+
+# Output file path
+set(OUTPUT_FILE "%s/configure_files.txt")
+file(WRITE "${OUTPUT_FILE}" "")
+
+foreach(MATCH ${CONFIGURE_FILE_MATCHES})
+    # Extract arguments from configure_file(input output [options])
+    string(REGEX REPLACE "configure_file[ \t]*\\([ \t]*([^ \t]+)[ \t]+([^ \t)]+).*\\)" "\\1;\\2" ARGS "${MATCH}")
+    list(GET ARGS 0 INPUT_FILE)
+    list(GET ARGS 1 OUTPUT_FILE_NAME)
+    
+    # Clean up quotes
+    string(REGEX REPLACE "\"" "" INPUT_FILE "${INPUT_FILE}")
+    string(REGEX REPLACE "\"" "" OUTPUT_FILE_NAME "${OUTPUT_FILE_NAME}")
+    
+    file(APPEND "${OUTPUT_FILE}" "CONFIGURE_FILE|${INPUT_FILE}|${OUTPUT_FILE_NAME}\n")
+endforeach()
+
+# Extract set() commands for variables
+string(REGEX MATCHALL "set[ \t]*\\(([^)]*)\\)" SET_MATCHES "${CONTENT}")
+
+foreach(MATCH ${SET_MATCHES})
+    # Extract arguments from set(var value)
+    string(REGEX REPLACE "set[ \t]*\\([ \t]*([^ \t]+)[ \t]+([^ \t)]+).*\\)" "\\1;\\2" ARGS "${MATCH}")
+    list(LENGTH ARGS ARG_COUNT)
+    if(ARG_COUNT EQUAL 2)
+        list(GET ARGS 0 VAR_NAME)
+        list(GET ARGS 1 VAR_VALUE)
+        
+        # Clean up quotes
+        string(REGEX REPLACE "\"" "" VAR_NAME "${VAR_NAME}")
+        string(REGEX REPLACE "\"" "" VAR_VALUE "${VAR_VALUE}")
+        
+        file(APPEND "${OUTPUT_FILE}" "SET|${VAR_NAME}|${VAR_VALUE}\n")
+    endif()
+endforeach()
+`, api.sourceDir, api.buildDir)
+
+	if err := ioutil.WriteFile(scriptPath, []byte(script), 0644); err != nil {
+		return nil, fmt.Errorf("failed to create configure file extraction script: %w", err)
+	}
+
+	// Run cmake with our custom script
+	args := []string{"-P", scriptPath}
+	cmd := exec.Command(api.cmakeExe, args...)
+	cmd.Dir = api.buildDir
+
+	if err := cmd.Run(); err != nil {
+		log.Printf("Warning: failed to extract configure_file commands: %v", err)
+		return nil, err
+	}
+
+	// Read the configure_files.txt output
+	outputFile := filepath.Join(api.buildDir, "configure_files.txt")
+	if _, err := os.Stat(outputFile); os.IsNotExist(err) {
+		return []*gazelle.CMakeConfigureFile{}, nil
+	}
+
+	content, err := ioutil.ReadFile(outputFile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read configure files output: %w", err)
+	}
+
+	// Parse the output
+	var configureFiles []*gazelle.CMakeConfigureFile
+	variables := make(map[string]string)
+	
+	lines := strings.Split(string(content), "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		
+		parts := strings.Split(line, "|")
+		if len(parts) < 3 {
+			continue
+		}
+		
+		switch parts[0] {
+		case "SET":
+			if len(parts) >= 3 {
+				variables[parts[1]] = parts[2]
+			}
+		case "CONFIGURE_FILE":
+			if len(parts) >= 3 {
+				inputFile := parts[1]
+				outputFile := parts[2]
+				
+				// Generate rule name
+				ruleName := strings.ReplaceAll(strings.ReplaceAll(outputFile, ".", "_"), "/", "_")
+				if ruleName == "" {
+					ruleName = "config_file"
+				}
+				
+				// Combine detected variables with defines
+				configVars := make(map[string]string)
+				for k, v := range variables {
+					configVars[k] = v
+				}
+				for k, v := range api.cmakeDefines {
+					configVars[k] = v
+				}
+				
+				// Add standard CMake variables
+				if _, exists := configVars["CMAKE_CURRENT_SOURCE_DIR"]; !exists {
+					configVars["CMAKE_CURRENT_SOURCE_DIR"] = "."
+				}
+				if _, exists := configVars["PROJECT_NAME"]; !exists {
+					configVars["PROJECT_NAME"] = "project"
+				}
+				
+				configureFiles = append(configureFiles, &gazelle.CMakeConfigureFile{
+					Name:       ruleName,
+					InputFile:  inputFile,
+					OutputFile: outputFile,
+					Variables:  configVars,
+				})
+			}
+		}
+	}
+	
+	return configureFiles, nil
+}
+
 // Configure runs CMake configure to generate the File API response
 func (api *CMakeFileAPI) Configure() error {
 	// Ensure build directory exists
