@@ -34,7 +34,6 @@ type CMakeConfigureFile struct {
 func generateRulesFromCMakeFile(args language.GenerateArgs, cmakeFilePath string, cfg *CMakeConfig) language.GenerateResult {
 	res := language.GenerateResult{}
 	targets := make(map[string]*CMakeTarget) // Map of target name to CMakeTarget
-	configureFiles := make(map[string]*CMakeConfigureFile) // Map of output filename to CMakeConfigureFile
 	variables := make(map[string]string) // CMake variables from set() commands
 
 	file, err := os.Open(cmakeFilePath)
@@ -101,10 +100,10 @@ func generateRulesFromCMakeFile(args language.GenerateArgs, cmakeFilePath string
 			target.Type = "library"               // Ensure type is library
 			for _, srcFile := range cmdArgs[1:] { // Simplification: assumes all following args are sources
 				// Basic check for header/source, could be improved
-				if isHeaderFile(srcFile) {
-					target.Headers = appendIfMissing(target.Headers, srcFile)
-				} else if isSourceFile(srcFile) {
-					target.Sources = appendIfMissing(target.Sources, srcFile)
+				if IsHeaderFile(srcFile) {
+					target.Headers = AppendIfMissing(target.Headers, srcFile)
+				} else if IsSourceFile(srcFile) {
+					target.Sources = AppendIfMissing(target.Sources, srcFile)
 				}
 			}
 		case "add_executable":
@@ -118,10 +117,10 @@ func generateRulesFromCMakeFile(args language.GenerateArgs, cmakeFilePath string
 			}
 			target.Type = "executable" // Ensure type
 			for _, srcFile := range cmdArgs[1:] {
-				if isSourceFile(srcFile) { // Executables usually don't list headers here
-					target.Sources = appendIfMissing(target.Sources, srcFile)
-				} else if isHeaderFile(srcFile) { // Though sometimes they might
-					target.Headers = appendIfMissing(target.Headers, srcFile)
+				if IsSourceFile(srcFile) { // Executables usually don't list headers here
+					target.Sources = AppendIfMissing(target.Sources, srcFile)
+				} else if IsHeaderFile(srcFile) { // Though sometimes they might
+					target.Headers = AppendIfMissing(target.Headers, srcFile)
 				}
 			}
 		case "target_sources": // Assumes target_sources(target_name PRIVATE src1 src2 ...)
@@ -135,10 +134,10 @@ func generateRulesFromCMakeFile(args language.GenerateArgs, cmakeFilePath string
 			} // Target must exist
 			// Skipping scope (PRIVATE/PUBLIC/INTERFACE) for simplicity for now
 			for _, srcFile := range cmdArgs[2:] { // Source files start from the third argument
-				if isHeaderFile(srcFile) {
-					target.Headers = appendIfMissing(target.Headers, srcFile)
-				} else if isSourceFile(srcFile) {
-					target.Sources = appendIfMissing(target.Sources, srcFile)
+				if IsHeaderFile(srcFile) {
+					target.Headers = AppendIfMissing(target.Headers, srcFile)
+				} else if IsSourceFile(srcFile) {
+					target.Sources = AppendIfMissing(target.Sources, srcFile)
 				}
 			}
 		case "target_include_directories": // Assumes target_include_directories(target_name PRIVATE dir1 dir2 ...)
@@ -155,7 +154,7 @@ func generateRulesFromCMakeFile(args language.GenerateArgs, cmakeFilePath string
 				// Here, inclDir might be relative to CMakeLists.txt or absolute.
 				// It could also be ${CMAKE_CURRENT_SOURCE_DIR} etc.
 				// For now, store as is. Resolution to Bazel paths is complex.
-				target.IncludeDirectories = appendIfMissing(target.IncludeDirectories, inclDir)
+				target.IncludeDirectories = AppendIfMissing(target.IncludeDirectories, inclDir)
 			}
 		case "target_link_libraries": // Handle target_link_libraries(target_name [scope] lib1 lib2 ...)
 			if len(cmdArgs) < 2 {
@@ -179,7 +178,7 @@ func generateRulesFromCMakeFile(args language.GenerateArgs, cmakeFilePath string
 			}
 			
 			for _, linkedLib := range cmdArgs[startIdx:] {
-				target.LinkedLibraries = appendIfMissing(target.LinkedLibraries, linkedLib)
+				target.LinkedLibraries = AppendIfMissing(target.LinkedLibraries, linkedLib)
 			}
 		case "set": // Handle set(VAR value) for CMake variables
 			if len(cmdArgs) >= 2 {
@@ -188,42 +187,7 @@ func generateRulesFromCMakeFile(args language.GenerateArgs, cmakeFilePath string
 				variables[varName] = varValue
 				log.Printf("Found CMake variable: %s = %s", varName, varValue)
 			}
-		case "configure_file": // Handle configure_file(input output [options])
-			if len(cmdArgs) >= 2 {
-				inputFile := cmdArgs[0]
-				outputFile := cmdArgs[1]
-				
-				// Generate a rule name based on the output file
-				ruleName := strings.ReplaceAll(strings.ReplaceAll(outputFile, ".", "_"), "/", "_")
-				if ruleName == "" {
-					ruleName = "config_file"
-				}
-				
-				// Add common CMake variables
-				configVars := make(map[string]string)
-				for k, v := range variables {
-					configVars[k] = v
-				}
-				for k, v := range cfg.CMakeDefines {
-					configVars[k] = v
-				}
-				
-				// Add some standard CMake variables if not already set
-				if _, exists := configVars["CMAKE_CURRENT_SOURCE_DIR"]; !exists {
-					configVars["CMAKE_CURRENT_SOURCE_DIR"] = "."
-				}
-				if _, exists := configVars["PROJECT_NAME"]; !exists {
-					configVars["PROJECT_NAME"] = "project"
-				}
-				
-				configureFiles[outputFile] = &CMakeConfigureFile{
-					Name:       ruleName,
-					InputFile:  inputFile,
-					OutputFile: outputFile,
-					Variables:  configVars,
-				}
-				log.Printf("Found configure_file: %s -> %s (rule: %s)", inputFile, outputFile, ruleName)
-			}
+		// Note: configure_file parsing removed - now handled by CMake File API
 		}
 	}
 
@@ -243,14 +207,14 @@ func generateRulesFromCMakeFile(args language.GenerateArgs, cmakeFilePath string
 		// This is a major simplification. CMake sources can be in subdirs.
 		var finalSrcs, finalHdrs []string
 		for _, s := range cmTarget.Sources {
-			if fileExists(s, args.RegularFiles) {
+			if FileExists(s, args.RegularFiles) {
 				finalSrcs = append(finalSrcs, s)
 			} else {
 				log.Printf("Source file %s for target %s not found in current directory's regular files, skipping.", s, cmTarget.Name)
 			}
 		}
 		for _, h := range cmTarget.Headers {
-			if fileExists(h, args.RegularFiles) {
+			if FileExists(h, args.RegularFiles) {
 				finalHdrs = append(finalHdrs, h)
 			} else {
 				log.Printf("Header file %s for target %s not found in current directory's regular files, skipping.", h, cmTarget.Name)
@@ -310,29 +274,7 @@ func generateRulesFromCMakeFile(args language.GenerateArgs, cmakeFilePath string
 		}
 	}
 	
-	// Generate cmake_configure_file rules
-	for _, configFile := range configureFiles {
-		// Check if the input file exists in the current directory
-		if !fileExists(configFile.InputFile, args.RegularFiles) {
-			log.Printf("Input file %s for configure_file not found in current directory, skipping.", configFile.InputFile)
-			continue
-		}
-		
-		r := rule.NewRule("cmake_configure_file", configFile.Name)
-		r.SetAttr("src", configFile.InputFile)
-		r.SetAttr("out", configFile.OutputFile)
-		
-		if len(configFile.Variables) > 0 {
-			r.SetAttr("defines", configFile.Variables)
-		}
-		
-		// Store the output file name for reference by other rules
-		r.SetPrivateAttr("cmake_configure_output", configFile.OutputFile)
-		
-		res.Gen = append(res.Gen, r)
-		log.Printf("Generated cmake_configure_file %s in %s: %s -> %s with defines: %v",
-			r.Name(), args.Rel, configFile.InputFile, configFile.OutputFile, configFile.Variables)
-	}
+	// Note: cmake_configure_file rule generation moved to CMake File API approach in language/cmake.go
 	
 	// Gazelle expects Imports to have the same length as Gen. Populate with nils for now.
 	if len(res.Gen) > 0 && len(res.Imports) == 0 {
@@ -341,37 +283,7 @@ func generateRulesFromCMakeFile(args language.GenerateArgs, cmakeFilePath string
 	return res
 }
 
-// Helper: Check if a file exists in a list of files
-func fileExists(file string, fileList []string) bool {
-	for _, f := range fileList {
-		if f == file {
-			return true
-		}
-	}
-	return false
-}
-
-// Helper: Append if string is not already in slice
-func appendIfMissing(slice []string, str string) []string {
-	for _, s := range slice {
-		if s == str {
-			return slice
-		}
-	}
-	return append(slice, str)
-}
-
-// Helper: Basic check for header file extensions
-func isHeaderFile(filename string) bool {
-	ext := strings.ToLower(filepath.Ext(filename))
-	return ext == ".h" || ext == ".hh" || ext == ".hpp" || ext == ".hxx"
-}
-
-// Helper: Basic check for C++ source file extensions
-func isSourceFile(filename string) bool {
-	ext := strings.ToLower(filepath.Ext(filename))
-	return ext == ".c" || ext == ".cc" || ext == ".cpp" || ext == ".cxx"
-}
+// Note: Helper functions moved to util.go
 
 // Main GenerateRules function (updated to use CMake File API)
 func GenerateRules(args language.GenerateArgs) language.GenerateResult {
