@@ -227,3 +227,58 @@ func TestCMakeEmptyDefines(t *testing.T) {
 		t.Errorf("Expected 0 cmake defines, got %d", len(api.cmakeDefines))
 	}
 }
+
+func TestAddPlatformHppIfNeeded(t *testing.T) {
+	// Test the platform.hpp detection and generation logic
+	
+	lang := &cmakeLang{}
+	
+	// Create mock args
+	c := &config.Config{
+		RepoRoot: "/test/workspace",
+		Exts:     make(map[string]interface{}),
+	}
+	c.Exts["cmake"] = gazelle.NewCMakeConfig()
+	
+	args := language.GenerateArgs{
+		Config: c,
+		Dir:    "/test/workspace/thirdparty/libzmq",
+		Rel:    "thirdparty/libzmq",
+	}
+	
+	// Test case 1: libzmq repository should automatically get platform.hpp
+	res := &language.GenerateResult{}
+	lang.addPlatformHppIfNeeded(res, "libzmq", args)
+	
+	// Should have generated 2 rules: genrule for platform.hpp and cc_library for headers
+	if len(res.Gen) != 2 {
+		t.Errorf("Expected 2 rules for libzmq, got %d", len(res.Gen))
+		for _, r := range res.Gen {
+			t.Logf("Generated rule: %s %s", r.Kind(), r.Name())
+		}
+	}
+	
+	// Check that genrule was created
+	var genruleFound bool
+	for _, r := range res.Gen {
+		if r.Kind() == "genrule" && r.Name() == "generate_platform_hpp" {
+			genruleFound = true
+			outs := r.AttrStrings("outs")
+			if len(outs) != 1 || outs[0] != ".cmake-build/platform.hpp" {
+				t.Errorf("Expected genrule outs to be [.cmake-build/platform.hpp], got %v", outs)
+			}
+			break
+		}
+	}
+	if !genruleFound {
+		t.Error("Expected to find genrule for platform.hpp generation")
+	}
+	
+	// Test case 2: non-libzmq repository should not automatically get platform.hpp
+	res2 := &language.GenerateResult{}
+	lang.addPlatformHppIfNeeded(res2, "other_repo", args)
+	
+	if len(res2.Gen) != 0 {
+		t.Errorf("Expected 0 rules for non-libzmq repository, got %d", len(res2.Gen))
+	}
+}

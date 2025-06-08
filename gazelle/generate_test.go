@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"sort"
+	"strings"
 	"testing"
 
 	"github.com/bazelbuild/bazel-gazelle/config"
@@ -216,6 +217,50 @@ func TestGenerateRules_ComplexCCProject_DepsGeneration(t *testing.T) {
 	expectedTestRunnerDeps := []string{":utils"}
 	if !reflect.DeepEqual(testRunnerDeps, expectedTestRunnerDeps) {
 		t.Errorf("Expected deps %v for rule 'test_runner', got %v", expectedTestRunnerDeps, testRunnerDeps)
+	}
+}
+
+func TestGenerateRules_ConfigureFile_PlatformHpp(t *testing.T) {
+	// Test that configure_file commands generate appropriate rules
+	projectRelDir := "testdata/platform_hpp_project"
+
+	args := createMockGenerateArgs(t,
+		projectRelDir,
+		[]string{"src/main.cpp", "include/config.h.in", "CMakeLists.txt"},
+	)
+
+	result := GenerateRules(args)
+
+	// Check that we have generated rules for both the library and the configure_file
+	expectedRuleCount := 2 // one for the library, one for the generated file
+	if len(result.Gen) < expectedRuleCount {
+		t.Errorf("Expected at least %d rules for configure_file test, got %d", expectedRuleCount, len(result.Gen))
+		for _, r := range result.Gen {
+			t.Logf("Generated rule: %s %s", r.Kind(), r.Name())
+		}
+		return
+	}
+
+	// Look for a genrule that generates platform.hpp
+	var genruleFound bool
+	for _, r := range result.Gen {
+		if r.Kind() == "genrule" && strings.Contains(r.Name(), "platform") {
+			genruleFound = true
+			// Verify the genrule has the expected attributes
+			outs := r.AttrStrings("outs")
+			if len(outs) == 0 {
+				t.Error("Expected genrule to have 'outs' attribute")
+			}
+			cmd := r.AttrString("cmd")
+			if cmd == "" {
+				t.Error("Expected genrule to have 'cmd' attribute")
+			}
+			break
+		}
+	}
+
+	if !genruleFound {
+		t.Error("Expected to find a genrule for platform.hpp generation")
 	}
 }
 
