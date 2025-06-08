@@ -12,7 +12,7 @@ def _cmake_configure_file_impl(ctx):
     if not output_file:
         fail("out attribute is required")
     if not cmake_binary:
-        fail("cmake_binary not found or not executable")
+        fail("cmake_binary attribute is required. Please provide a cmake binary target, e.g.: cmake_binary = \"@cmake//:cmake\"")
     
     # Validate variable values for shell safety
     for key, value in ctx.attr.defines.items():
@@ -105,10 +105,10 @@ cmake_configure_file = rule(
             doc = "Dictionary of variable definitions for substitution",
         ),
         "cmake_binary": attr.label(
-            default = "@cmake//:cmake",
             executable = True,
             cfg = "exec",
-            doc = "The cmake binary to use for file configuration",
+            doc = "The cmake binary to use for file configuration. Required for rule execution.",
+            allow_single_file = True,
         ),
     },
     doc = "Configures a file using cmake binary, similar to CMake's configure_file command.",

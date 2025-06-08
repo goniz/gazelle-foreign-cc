@@ -331,6 +331,10 @@ func (l *cmakeLang) generateRulesFromTargets(args language.GenerateArgs, cmakeTa
 		r.SetAttr("src", configFile.InputFile)
 		r.SetAttr("out", configFile.OutputFile)
 		
+		// Note: cmake_binary attribute is required but not set here
+		// Users must provide this in their BUILD files when using cmake_configure_file rules
+		// Example: cmake_binary = "@cmake//:cmake"
+		
 		if len(configFile.Variables) > 0 {
 			r.SetAttr("defines", configFile.Variables)
 		}
