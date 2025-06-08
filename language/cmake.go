@@ -2,6 +2,7 @@ package language
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -414,6 +415,13 @@ func (l *cmakeLang) generateRulesFromTargetsWithRepo(args language.GenerateArgs,
 			log.Printf("Skipping rule for target %s as no valid sources/headers were found in the current directory.", cmTarget.Name)
 		}
 	}
+	
+	// Special case: For external repositories that might need platform.hpp
+	// This handles cases where libzmq and similar projects expect platform.hpp
+	// but don't have explicit configure_file() commands
+	if externalRepo != "" {
+		l.addPlatformHppIfNeeded(&res, externalRepo, args)
+	}
 
 	if len(res.Gen) > 0 && len(res.Imports) == 0 {
 		res.Imports = make([]interface{}, len(res.Gen))
@@ -488,4 +496,136 @@ func (l *cmakeLang) Imports(c *config.Config, r *rule.Rule, f *rule.File) []reso
 	// For now, return empty list
 	// In a real implementation, this would parse source files for #include statements
 	return nil
+}
+
+// addPlatformHppIfNeeded checks if an external repository needs platform.hpp and adds generation rules
+func (l *cmakeLang) addPlatformHppIfNeeded(res *language.GenerateResult, externalRepo string, args language.GenerateArgs) {
+	// Check if this is a project that typically needs platform.hpp (like libzmq)
+	needsPlatformHpp := false
+	
+	// Check for common indicators that platform.hpp is needed
+	if externalRepo == "libzmq" || strings.Contains(externalRepo, "zmq") {
+		needsPlatformHpp = true
+		log.Printf("Detected libzmq-style project %s, adding platform.hpp generation", externalRepo)
+	}
+	
+	// Check if any existing rules reference platform.hpp or .cmake-build directory
+	for _, r := range res.Gen {
+		if r.Kind() == "cc_library" {
+			// Check sources and headers for platform.hpp references
+			if srcs := r.Attr("srcs"); srcs != nil {
+				// Convert build.Expr to string representation and check for platform.hpp
+				srcsStr := fmt.Sprintf("%v", srcs)
+				if strings.Contains(srcsStr, "platform.hpp") || strings.Contains(srcsStr, ".cmake-build") {
+					needsPlatformHpp = true
+					log.Printf("Found platform.hpp reference in sources, adding generation rules")
+					break
+				}
+			}
+			if hdrs := r.Attr("hdrs"); hdrs != nil {
+				// Convert build.Expr to string representation and check for platform.hpp
+				hdrsStr := fmt.Sprintf("%v", hdrs)
+				if strings.Contains(hdrsStr, "platform.hpp") || strings.Contains(hdrsStr, ".cmake-build") {
+					needsPlatformHpp = true
+					log.Printf("Found platform.hpp reference in headers, adding generation rules")
+					break
+				}
+			}
+		}
+	}
+	
+	if !needsPlatformHpp {
+		return
+	}
+	
+	// Generate platform.hpp genrule
+	platformRule := rule.NewRule("genrule", "generate_platform_hpp")
+	platformRule.SetAttr("outs", []string{".cmake-build/platform.hpp"})
+	
+	// Create a command that generates a basic platform.hpp file
+	cmd := `mkdir -p .cmake-build && cat > $@ << 'EOF'
+#ifndef __ZMQ_PLATFORM_HPP_INCLUDED__
+#define __ZMQ_PLATFORM_HPP_INCLUDED__
+
+/* Basic platform configuration for CMake projects built with Bazel */
+/* This file provides minimal platform definitions */
+
+/* Condition variable implementation */
+#define ZMQ_USE_CV_IMPL_STL11
+
+/* I/O thread polling - use epoll on Linux, kqueue on BSD/macOS, select as fallback */
+#if defined(__linux__)
+  #define ZMQ_IOTHREAD_POLLER_USE_EPOLL
+  #define ZMQ_IOTHREAD_POLLER_USE_EPOLL_CLOEXEC
+  #define ZMQ_HAVE_LINUX
+#elif defined(__APPLE__)
+  #define ZMQ_IOTHREAD_POLLER_USE_KQUEUE
+  #define ZMQ_HAVE_OSX
+#elif defined(__FreeBSD__) || defined(__FreeBSD_kernel__)
+  #define ZMQ_IOTHREAD_POLLER_USE_KQUEUE
+  #define ZMQ_HAVE_FREEBSD
+#elif defined(__OpenBSD__)
+  #define ZMQ_IOTHREAD_POLLER_USE_KQUEUE
+  #define ZMQ_HAVE_OPENBSD
+#elif defined(__NetBSD__)
+  #define ZMQ_IOTHREAD_POLLER_USE_KQUEUE
+  #define ZMQ_HAVE_NETBSD
+#else
+  #define ZMQ_IOTHREAD_POLLER_USE_SELECT
+#endif
+
+/* API polling implementation */
+#define ZMQ_POLL_BASED_ON_POLL
+
+/* Enable common POSIX features */
+#define HAVE_FORK
+#define HAVE_CLOCK_GETTIME
+#define ZMQ_HAVE_UIO
+
+/* Enable common socket features */
+#define ZMQ_HAVE_EVENTFD
+#define ZMQ_HAVE_EVENTFD_CLOEXEC
+#define ZMQ_HAVE_O_CLOEXEC
+#define ZMQ_HAVE_SOCK_CLOEXEC
+#define ZMQ_HAVE_SO_KEEPALIVE
+#define ZMQ_HAVE_TCP_KEEPCNT
+#define ZMQ_HAVE_TCP_KEEPIDLE
+#define ZMQ_HAVE_TCP_KEEPINTVL
+#define ZMQ_HAVE_TCP_KEEPALIVE
+
+/* Pthread features */
+#define ZMQ_HAVE_PTHREAD_SETNAME_2
+#define ZMQ_HAVE_PTHREAD_SET_AFFINITY
+
+/* String functions */
+#define HAVE_STRNLEN
+#define ZMQ_HAVE_STRLCPY
+
+/* Enable IPC transport */
+#define ZMQ_HAVE_IPC
+
+/* Use built-in SHA1 implementation */
+#define ZMQ_USE_BUILTIN_SHA1
+
+/* WebSocket support */
+#define ZMQ_HAVE_WS
+
+/* Set cache line size to a reasonable default */
+#define ZMQ_CACHELINE_SIZE 64
+
+#endif
+EOF`
+	
+	platformRule.SetAttr("cmd", cmd)
+	
+	res.Gen = append(res.Gen, platformRule)
+	log.Printf("Generated platform.hpp genrule for external repository: %s", externalRepo)
+	
+	// Also create a cc_library that provides the generated header
+	headerLib := rule.NewRule("cc_library", "platform_headers")
+	headerLib.SetAttr("hdrs", []string{".cmake-build/platform.hpp"})
+	headerLib.SetAttr("strip_include_prefix", ".cmake-build")
+	
+	res.Gen = append(res.Gen, headerLib)
+	log.Printf("Generated cc_library platform_headers for external repository: %s", externalRepo)
 }

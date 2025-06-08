@@ -121,21 +121,13 @@ cc_library(
         "@libzmq//:src/v3_1_encoder.cpp",
         "@libzmq//:src/xpub.cpp",
         "@libzmq//:src/xsub.cpp",
-        "@libzmq//:src/ws_address.cpp",
-        "@libzmq//:src/ws_connecter.cpp",
-        "@libzmq//:src/ws_decoder.cpp",
-        "@libzmq//:src/ws_encoder.cpp",
-        "@libzmq//:src/ws_engine.cpp",
-        "@libzmq//:src/ws_listener.cpp",
         "@libzmq//:src/zap_client.cpp",
         "@libzmq//:src/zmq.cpp",
         "@libzmq//:src/zmq_utils.cpp",
         "@libzmq//:src/zmtp_engine.cpp",
     ],
     hdrs = [
-        "@libzmq//:include/zmq.h",
-        "@libzmq//:include/zmq_utils.h",
-        "@libzmq//:src/zmq_draft.h",
+        "@libzmq//:.cmake-build/platform.hpp",
         "@libzmq//:external/sha1/sha1.h",
         "@libzmq//:src/address.hpp",
         "@libzmq//:src/array.hpp",
@@ -182,7 +174,6 @@ cc_library(
         "@libzmq//:src/io_object.hpp",
         "@libzmq//:src/io_thread.hpp",
         "@libzmq//:src/ip.hpp",
-        "@libzmq//:src/ip_resolver.hpp",
         "@libzmq//:src/ipc_address.hpp",
         "@libzmq//:src/ipc_connecter.hpp",
         "@libzmq//:src/ipc_listener.hpp",
@@ -223,7 +214,6 @@ cc_library(
         "@libzmq//:src/pull.hpp",
         "@libzmq//:src/push.hpp",
         "@libzmq//:src/radio.hpp",
-        "@libzmq//:src/radix_tree.hpp",
         "@libzmq//:src/random.hpp",
         "@libzmq//:src/raw_decoder.hpp",
         "@libzmq//:src/raw_encoder.hpp",
@@ -272,13 +262,6 @@ cc_library(
         "@libzmq//:src/vmci_listener.hpp",
         "@libzmq//:src/windows.hpp",
         "@libzmq//:src/wire.hpp",
-        "@libzmq//:src/ws_address.hpp",
-        "@libzmq//:src/ws_connecter.hpp",
-        "@libzmq//:src/ws_decoder.hpp",
-        "@libzmq//:src/ws_encoder.hpp",
-        "@libzmq//:src/ws_engine.hpp",
-        "@libzmq//:src/ws_listener.hpp",
-        "@libzmq//:src/ws_protocol.hpp",
         "@libzmq//:src/xpub.hpp",
         "@libzmq//:src/xsub.hpp",
         "@libzmq//:src/ypipe.hpp",
@@ -289,33 +272,16 @@ cc_library(
         "@libzmq//:src/zmtp_engine.hpp",
     ],
     includes = [
+        "@libzmq//.cmake-build",
         "@libzmq//include",
-        "@libzmq//",
     ],
-    deps = ["@libzmq//:platform_headers"],
-)
-
-# Copy libzmq headers for easier access
-genrule(
-    name = "copy_zmq_headers",
-    srcs = [
-        "@libzmq//:include/zmq.h",
-        "@libzmq//:include/zmq_utils.h",
-    ],
-    outs = [
-        "include/zmq.h",
-        "include/zmq_utils.h",
-    ],
-    cmd = "mkdir -p $$(dirname $(location include/zmq.h)) && cp $(location @libzmq//:include/zmq.h) $(location include/zmq.h) && cp $(location @libzmq//:include/zmq_utils.h) $(location include/zmq_utils.h)",
 )
 
 cc_library(
     name = "libzmq",
     hdrs = [
-        ":include/zmq.h",
-        ":include/zmq_utils.h",
+        "@libzmq//:include/zmq.h",
+        "@libzmq//:include/zmq_utils.h",
     ],
-    strip_include_prefix = "include",
     deps = [":objects"],
-    visibility = ["//visibility:public"],
 )
