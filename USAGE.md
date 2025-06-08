@@ -59,17 +59,22 @@ For external CMake dependencies, use the `gazelle:cmake` directive.
 #### Step 1: Define External Project in MODULE.bazel
 
 ```starlark
+# Use http_archive with bzlmod
+http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 http_archive(
     name = "somelib",
     urls = ["https://github.com/example/somelib/archive/v1.0.0.tar.gz"],
     strip_prefix = "somelib-1.0.0",
-    build_file_content = '''
+    build_file = "@gazelle-foreign-cc//:external_repo_buildfile.BUILD",
+)
+```
+
+Create an `external_repo_buildfile.BUILD` file in your repository root:
+```starlark
 filegroup(
     name = "srcs",
     srcs = glob(["**"]),
     visibility = ["//visibility:public"],
-)
-'''
 )
 ```
 
