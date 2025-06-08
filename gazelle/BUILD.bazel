@@ -20,6 +20,7 @@ go_library(
     srcs = [
         "config.go",
         "generate.go",
+        "util.go",
     ],
     importpath = "github.com/goniz/gazelle-foreign-cc/gazelle",
     visibility = ["//language:__pkg__"],
