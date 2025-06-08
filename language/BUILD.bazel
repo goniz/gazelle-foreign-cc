@@ -28,9 +28,9 @@ go_library(
 go_test(
     name = "language_tests",
     srcs = [
-        "cmake_test.go",
-        "cmake_api_test.go",
         "cmake_api_integration_test.go",
+        "cmake_api_test.go",
+        "cmake_test.go",
     ],
     embed = [":language"],
     deps = ["//gazelle:cmake_lib"],
