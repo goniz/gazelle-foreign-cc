@@ -29,25 +29,10 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
-
-      - name: Set up Bazel
-        uses: bazel-contrib/setup-bazel@0.14.0
+      - name: Setup development environment
+        uses: ./.github/actions/setup-development
         with:
           bazelrc: ${{ secrets.BUILDBUDDY_BAZELRC }}
-
-      - name: Install CMake
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y cmake
-
-      - name: Verify setup
-        run: |
-          echo "Go version: $(go version)"
-          echo "CMake version: $(cmake --version | head -1)"
-          echo "Bazel version: $(bazel --version)"
-          echo "Setup verification complete"
 
       - name: Run Claude PR Action
         uses: anthropics/claude-code-action@beta
