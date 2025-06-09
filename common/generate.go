@@ -201,7 +201,44 @@ func generateRulesFromCMakeFile(args language.GenerateArgs, cmakeFilePath string
 				variables[varName] = varValue
 				log.Printf("Found CMake variable: %s = %s", varName, varValue)
 			}
-		// Note: configure_file parsing removed - now handled by CMake File API
+		case "configure_file": // Handle configure_file(input output) for backward compatibility
+			if len(cmdArgs) >= 2 {
+				inputFile := cmdArgs[0]
+				outputFile := cmdArgs[1]
+				
+				// Generate rule name based on output file (e.g., config.h -> config_h)
+				ruleName := strings.ReplaceAll(strings.ReplaceAll(outputFile, ".", "_"), "/", "_")
+				
+				// Create configure file info 
+				configFile := &CMakeConfigureFile{
+					Name:       ruleName,
+					InputFile:  inputFile,
+					OutputFile: outputFile,
+					Variables:  make(map[string]string),
+				}
+				
+				// Copy current variables to this configure file
+				for k, v := range variables {
+					configFile.Variables[k] = v
+				}
+				
+				// Add default CMake variables
+				configFile.Variables["PROJECT_NAME"] = "project" // Default project name
+				configFile.Variables["CMAKE_CURRENT_SOURCE_DIR"] = "."
+				
+				// Generate cmake_configure_file rule
+				r := rule.NewRule("cmake_configure_file", configFile.Name)
+				r.SetAttr("src", configFile.InputFile)
+				r.SetAttr("out", configFile.OutputFile)
+				if len(configFile.Variables) > 0 {
+					r.SetAttr("defines", configFile.Variables)
+				}
+				r.SetPrivateAttr("cmake_configure_output", configFile.OutputFile)
+				
+				res.Gen = append(res.Gen, r)
+				log.Printf("Generated cmake_configure_file %s: %s -> %s with defines: %v",
+					r.Name(), configFile.InputFile, configFile.OutputFile, configFile.Variables)
+			}
 		}
 	}
 
