@@ -5,6 +5,8 @@ load("@rules_cc//cc:defs.bzl", "cc_library")
 # gazelle:cmake_define ZMQ_BUILD_TESTS OFF
 # gazelle:cmake_define WITH_PERF_TOOL OFF
 
+package(default_visibility = "//visibility:public")
+
 cmake_configure_file(
     name = "platform_hpp",
     out = "platform.hpp",
