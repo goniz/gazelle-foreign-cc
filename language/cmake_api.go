@@ -491,9 +491,6 @@ func (api *CMakeFileAPI) parseCMakeListsForConfigureFile() ([]*common.CMakeConfi
 		variables[k] = v
 	}
 	
-	// Add essential CMake variables needed for path resolution
-	variables["CMAKE_CURRENT_SOURCE_DIR"] = "."
-	
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())

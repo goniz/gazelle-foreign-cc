@@ -19,8 +19,12 @@ def _cmake_configure_file_impl(ctx):
     
     # Build cmake -D arguments for variable definitions if any
     define_args = []
+    # Add CMAKE_CURRENT_SOURCE_DIR internally
+    define_args.append('-DCMAKE_CURRENT_SOURCE_DIR=%s' % cmake_source_dir)
     for key, value in ctx.attr.defines.items():
-        define_args.append('-D%s=%s' % (key, value))
+        # Skip CMAKE_CURRENT_SOURCE_DIR if user provided it - we set it automatically
+        if key != "CMAKE_CURRENT_SOURCE_DIR":
+            define_args.append('-D%s=%s' % (key, value))
     
     # Get source files and derive the actual source directory
     inputs = []
@@ -51,7 +55,8 @@ def _cmake_configure_file_impl(ctx):
     # Copy the generated file from the cmake build directory
     generated_file_path = ctx.attr.generated_file_path
     if not generated_file_path:
-        fail("generated_file_path attribute is required")
+        # Default to the output file short path if not specified
+        generated_file_path = output_file.short_path
     
     # Use a simple shell command to copy the file
     ctx.actions.run_shell(
@@ -104,8 +109,7 @@ cmake_configure_file = rule(
             doc = "CMakeLists.txt and related files",
         ),
         "generated_file_path": attr.string(
-            mandatory = True,
-            doc = "Path to the generated file relative to cmake build directory",
+            doc = "Path to the generated file relative to cmake build directory. Defaults to the basename of 'out' if not specified.",
         ),
     },
     doc = "Runs cmake configure and copies the generated file.",

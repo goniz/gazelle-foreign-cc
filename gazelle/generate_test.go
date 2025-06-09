@@ -282,8 +282,10 @@ func TestGenerateRules_ConfigureFile(t *testing.T) {
 	}
 	
 	generatedFilePath := configRule.AttrString("generated_file_path")
-	if generatedFilePath != "config.h" {
-		t.Errorf("Expected generated_file_path 'config.h', got '%s'", generatedFilePath)
+	// generated_file_path should be optional when it equals the out attribute
+	// If not set explicitly, the rule should default it to the out path
+	if generatedFilePath != "" && generatedFilePath != "config.h" {
+		t.Errorf("Expected generated_file_path to be empty or 'config.h', got '%s'", generatedFilePath)
 	}
 	
 	// Check that cmake_source_files includes CMakeLists.txt and the input file

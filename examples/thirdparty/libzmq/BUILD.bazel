@@ -19,11 +19,9 @@ cmake_configure_file(
         "src/version.rc.in",
     ],
     defines = {
-        "CMAKE_CURRENT_SOURCE_DIR": ".",
         "WITH_PERF_TOOL": "OFF",
         "ZMQ_BUILD_TESTS": "OFF",
     },
-    generated_file_path = ".cmake-build/version.rc",
 )
 
 cmake_configure_file(
@@ -36,11 +34,9 @@ cmake_configure_file(
         "builds/cmake/platform.hpp.in",
     ],
     defines = {
-        "CMAKE_CURRENT_SOURCE_DIR": ".",
         "WITH_PERF_TOOL": "OFF",
         "ZMQ_BUILD_TESTS": "OFF",
     },
-    generated_file_path = ".cmake-build/platform.hpp",
 )
 
 cmake_configure_file(
@@ -53,11 +49,9 @@ cmake_configure_file(
         "src/libzmq.pc.in",
     ],
     defines = {
-        "CMAKE_CURRENT_SOURCE_DIR": ".",
         "WITH_PERF_TOOL": "OFF",
         "ZMQ_BUILD_TESTS": "OFF",
     },
-    generated_file_path = ".cmake-build/libzmq.pc",
 )
 
 cc_library(

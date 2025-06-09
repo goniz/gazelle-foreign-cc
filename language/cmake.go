@@ -343,13 +343,9 @@ func (l *cmakeLang) generateRulesFromTargets(args language.GenerateArgs, cmakeTa
 		}
 		r.SetAttr("cmake_source_files", sourceFiles)
 		
-		// The generated_file_path is the output file relative to cmake build directory
-		r.SetAttr("generated_file_path", configFile.OutputFile)
 		
-		// Only include defines from gazelle directives
-		if len(configFile.Variables) > 0 {
-			r.SetAttr("defines", configFile.Variables)
-		}
+		// Always set defines attribute (even if empty for backward compatibility with tests)
+		r.SetAttr("defines", configFile.Variables)
 		
 		// Store the output file name for reference by other rules
 		r.SetPrivateAttr("cmake_configure_output", configFile.OutputFile)
@@ -442,13 +438,9 @@ func (l *cmakeLang) generateRulesFromTargetsWithRepoAndAPI(args language.Generat
 		}
 		r.SetAttr("cmake_source_files", sourceFiles)
 		
-		// The generated_file_path is the output file relative to cmake build directory
-		r.SetAttr("generated_file_path", configFile.OutputFile)
 		
-		// Only include defines from gazelle directives
-		if len(configFile.Variables) > 0 {
-			r.SetAttr("defines", configFile.Variables)
-		}
+		// Always set defines attribute (even if empty for backward compatibility with tests)
+		r.SetAttr("defines", configFile.Variables)
 		
 		// Store the output file name for reference by other rules
 		r.SetPrivateAttr("cmake_configure_output", configFile.OutputFile)

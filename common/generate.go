@@ -222,9 +222,6 @@ func generateRulesFromCMakeFile(args language.GenerateArgs, cmakeFilePath string
 					configFile.Variables[k] = v
 				}
 				
-				// Add essential CMake variables needed for path resolution
-				configFile.Variables["CMAKE_CURRENT_SOURCE_DIR"] = "."
-				
 				// Generate cmake_configure_file rule
 				r := rule.NewRule("cmake_configure_file", configFile.Name)
 				r.SetAttr("out", configFile.OutputFile)
@@ -242,13 +239,8 @@ func generateRulesFromCMakeFile(args language.GenerateArgs, cmakeFilePath string
 				}
 				r.SetAttr("cmake_source_files", sourceFiles)
 				
-				// The generated_file_path is the output file relative to cmake build directory
-				r.SetAttr("generated_file_path", configFile.OutputFile)
-				
-				// Only include defines from gazelle directives
-				if len(configFile.Variables) > 0 {
-					r.SetAttr("defines", configFile.Variables)
-				}
+				// Always set defines attribute (even if empty for backward compatibility with tests)
+				r.SetAttr("defines", configFile.Variables)
 				r.SetPrivateAttr("cmake_configure_output", configFile.OutputFile)
 				
 				res.Gen = append(res.Gen, r)
