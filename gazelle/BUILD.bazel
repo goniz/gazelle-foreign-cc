@@ -9,8 +9,7 @@ go_library(
     importpath = "github.com/goniz/gazelle-foreign-cc/gazelle/config",
     visibility = ["//language:__pkg__"],
     deps = [
-        "@gazelle//config",
-        "@gazelle//rule",
+        "//common",
     ],
 )
 
@@ -20,10 +19,12 @@ go_library(
     srcs = [
         "config.go",
         "generate.go",
+        "util.go",
     ],
     importpath = "github.com/goniz/gazelle-foreign-cc/gazelle",
     visibility = ["//language:__pkg__"],
     deps = [
+        "//common",
         "@gazelle//config",
         "@gazelle//language",
         "@gazelle//rule",

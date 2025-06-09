@@ -1,16 +1,18 @@
 package language
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"log"
 
-	"github.com/goniz/gazelle-foreign-cc/gazelle"
+	"github.com/goniz/gazelle-foreign-cc/common"
 )
 
 // CMake File API structures
@@ -138,6 +140,8 @@ type CMakeFileAPI struct {
 	buildDir     string
 	cmakeExe     string
 	cmakeDefines map[string]string
+	configured   bool
+	cache        map[string]string
 }
 
 // NewCMakeFileAPI creates a new CMake File API handler
@@ -147,6 +151,8 @@ func NewCMakeFileAPI(sourceDir, buildDir, cmakeExe string, cmakeDefines map[stri
 		buildDir:     buildDir,
 		cmakeExe:     cmakeExe,
 		cmakeDefines: cmakeDefines,
+		configured:   false,
+		cache:        make(map[string]string),
 	}
 }
 
@@ -162,6 +168,7 @@ func (api *CMakeFileAPI) CreateQuery() error {
 		"codemodel-v2",
 		"cache-v2",
 		"toolchains-v1",
+		"cmakeFiles-v1",
 	}
 
 	for _, query := range queries {
@@ -172,6 +179,34 @@ func (api *CMakeFileAPI) CreateQuery() error {
 	}
 
 	return nil
+}
+
+// DetectConfigureFileCommands detects configure_file commands using CMake File API
+func (api *CMakeFileAPI) DetectConfigureFileCommands() ([]*common.CMakeConfigureFile, error) {
+	// Ensure we have File API responses available
+	if !api.configured {
+		if err := api.CreateQuery(); err != nil {
+			return nil, fmt.Errorf("failed to create File API query: %w", err)
+		}
+		
+		if err := api.Configure(); err != nil {
+			return nil, fmt.Errorf("failed to run CMake configure: %w", err)
+		}
+		api.configured = true
+	}
+	
+	// Load CMake cache to get actual variables
+	if err := api.loadCache(); err != nil {
+		log.Printf("Warning: failed to load CMake cache: %v", err)
+	}
+	
+	// Parse CMakeLists.txt to find actual configure_file commands
+	configureFiles, err := api.parseCMakeListsForConfigureFile()
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse CMakeLists.txt for configure_file commands: %w", err)
+	}
+	
+	return configureFiles, nil
 }
 
 // Configure runs CMake configure to generate the File API response
@@ -284,15 +319,19 @@ func (api *CMakeFileAPI) ReadAPIResponse() (*APIIndex, *Codemodel, map[string]*T
 }
 
 // GenerateFromAPI generates Bazel rules using CMake File API
-func (api *CMakeFileAPI) GenerateFromAPI(relativeDir string) ([]*gazelle.CMakeTarget, error) {
-	// Create query files
-	if err := api.CreateQuery(); err != nil {
-		return nil, fmt.Errorf("failed to create API query: %w", err)
-	}
+func (api *CMakeFileAPI) GenerateFromAPI(relativeDir string) ([]*common.CMakeTarget, error) {
+	// Ensure we have File API responses available
+	if !api.configured {
+		// Create query files
+		if err := api.CreateQuery(); err != nil {
+			return nil, fmt.Errorf("failed to create API query: %w", err)
+		}
 
-	// Run CMake configure
-	if err := api.Configure(); err != nil {
-		return nil, fmt.Errorf("failed to configure CMake: %w", err)
+		// Run CMake configure
+		if err := api.Configure(); err != nil {
+			return nil, fmt.Errorf("failed to configure CMake: %w", err)
+		}
+		api.configured = true
 	}
 
 	// Read API response
@@ -302,7 +341,7 @@ func (api *CMakeFileAPI) GenerateFromAPI(relativeDir string) ([]*gazelle.CMakeTa
 	}
 
 	// Convert targets to CMakeTarget format
-	var cmakeTargets []*gazelle.CMakeTarget
+	var cmakeTargets []*common.CMakeTarget
 
 	for _, target := range targets {
 		// Skip utility targets and imported targets
@@ -310,7 +349,7 @@ func (api *CMakeFileAPI) GenerateFromAPI(relativeDir string) ([]*gazelle.CMakeTa
 			continue
 		}
 
-		cmakeTarget := &gazelle.CMakeTarget{
+		cmakeTarget := &common.CMakeTarget{
 			Name: target.Name,
 		}
 
@@ -394,6 +433,152 @@ func (api *CMakeFileAPI) GenerateFromAPI(relativeDir string) ([]*gazelle.CMakeTa
 	return cmakeTargets, nil
 }
 
+// loadCache loads CMake cache variables from cache-v2 API response
+func (api *CMakeFileAPI) loadCache() error {
+	replyDir := filepath.Join(api.buildDir, ".cmake", "api", "v1", "reply")
+	
+	// Find cache response
+	cachePattern := filepath.Join(replyDir, "cache-*.json")
+	cacheFiles, err := filepath.Glob(cachePattern)
+	if err != nil || len(cacheFiles) == 0 {
+		return fmt.Errorf("no cache response found")
+	}
+	
+	// Read cache response
+	cacheData, err := ioutil.ReadFile(cacheFiles[0])
+	if err != nil {
+		return fmt.Errorf("failed to read cache response: %w", err)
+	}
+	
+	var cache struct {
+		Entries []struct {
+			Name  string `json:"name"`
+			Value string `json:"value"`
+			Type  string `json:"type"`
+		} `json:"entries"`
+	}
+	
+	if err := json.Unmarshal(cacheData, &cache); err != nil {
+		return fmt.Errorf("failed to parse cache response: %w", err)
+	}
+	
+	// Store cache variables
+	for _, entry := range cache.Entries {
+		api.cache[entry.Name] = entry.Value
+	}
+	
+	log.Printf("Loaded %d cache variables from CMake", len(api.cache))
+	return nil
+}
+
+
+// parseCMakeListsForConfigureFile parses CMakeLists.txt for configure_file commands
+func (api *CMakeFileAPI) parseCMakeListsForConfigureFile() ([]*common.CMakeConfigureFile, error) {
+	cmakeListsPath := filepath.Join(api.sourceDir, "CMakeLists.txt")
+	
+	file, err := os.Open(cmakeListsPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open CMakeLists.txt: %w", err)
+	}
+	defer file.Close()
+	
+	var configureFiles []*common.CMakeConfigureFile
+	variables := make(map[string]string)
+	
+	// Only include cmake defines from gazelle directives (not variables discovered by File API)
+	// The cmake binary will handle determining all other variables automatically
+	for k, v := range api.cmakeDefines {
+		variables[k] = v
+	}
+	
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		
+		// Parse configure_file() commands (skip set() commands since we only want gazelle directive defines)
+		configMatch := regexp.MustCompile(`^configure_file\s*\(\s*([^)\s]+)\s+([^)\s]+)`).FindStringSubmatch(line)
+		if configMatch == nil {
+			continue
+		}
+		
+		inputFile := strings.Trim(configMatch[1], `"`)
+		outputFile := strings.Trim(configMatch[2], `"`)
+		
+		// Resolve CMake variables in paths
+		inputFile = api.resolveCMakeVariables(inputFile, variables)
+		outputFile = api.resolveCMakeVariables(outputFile, variables)
+		
+		// Make paths relative if absolute
+		if filepath.IsAbs(inputFile) {
+			if rel, err := filepath.Rel(api.sourceDir, inputFile); err == nil {
+				inputFile = rel
+			}
+		}
+		if filepath.IsAbs(outputFile) {
+			if rel, err := filepath.Rel(api.sourceDir, outputFile); err == nil {
+				outputFile = rel
+			}
+		}
+		
+		// Generate rule name from output file
+		ruleName := strings.ReplaceAll(strings.ReplaceAll(filepath.Base(outputFile), ".", "_"), "/", "_")
+		if ruleName == "" {
+			ruleName = "config_file"
+		}
+		
+		// Copy variables for this configure_file
+		configVars := make(map[string]string)
+		for k, v := range variables {
+			configVars[k] = v
+		}
+		
+		configureFiles = append(configureFiles, &common.CMakeConfigureFile{
+			Name:       ruleName,
+			InputFile:  inputFile,
+			OutputFile: outputFile,
+			Variables:  configVars,
+		})
+		
+		log.Printf("Found configure_file: %s -> %s (rule: %s)", inputFile, outputFile, ruleName)
+	}
+	
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("failed to scan CMakeLists.txt: %w", err)
+	}
+	
+	return configureFiles, nil
+}
+
+// resolveCMakeVariables resolves CMake variables in a string
+func (api *CMakeFileAPI) resolveCMakeVariables(input string, variables map[string]string) string {
+	result := input
+	
+	// For external repositories, handle CMAKE_CURRENT_SOURCE_DIR specially
+	// Replace with empty string and then handle the path normalization
+	result = strings.ReplaceAll(result, "${CMAKE_CURRENT_SOURCE_DIR}/", "")
+	result = strings.ReplaceAll(result, "${CMAKE_CURRENT_SOURCE_DIR}", "")
+	
+	// Handle CMAKE_CURRENT_BINARY_DIR
+	result = strings.ReplaceAll(result, "${CMAKE_CURRENT_BINARY_DIR}/", ".cmake-build/")
+	result = strings.ReplaceAll(result, "${CMAKE_CURRENT_BINARY_DIR}", ".cmake-build")
+	
+	// Then apply user-defined variables
+	for varName, varValue := range variables {
+		result = strings.ReplaceAll(result, "${"+varName+"}", varValue)
+	}
+	
+	// Clean up paths for Bazel labels
+	// Remove leading "./" and ensure proper path format
+	if strings.HasPrefix(result, "./") {
+		result = result[2:]
+	}
+	
+	// Remove any leading slashes that might remain
+	result = strings.TrimPrefix(result, "/")
+	
+	return result
+}
+
 // Helper functions
 
 // extractIncludeDirectories safely extracts include directories from CompileGroups
@@ -438,23 +623,5 @@ func extractIncludeDirectories(target *Target, sourceDir string) []string {
 	return includeDirectories
 }
 
-func appendIfMissing(slice []string, str string) []string {
-	for _, s := range slice {
-		if s == str {
-			return slice
-		}
-	}
-	return append(slice, str)
-}
-
-// Helper: Basic check for header file extensions
-func isHeaderFile(filename string) bool {
-	ext := strings.ToLower(filepath.Ext(filename))
-	return ext == ".h" || ext == ".hh" || ext == ".hpp" || ext == ".hxx"
-}
-
-// Helper: Basic check for C++ source file extensions
-func isSourceFile(filename string) bool {
-	ext := strings.ToLower(filepath.Ext(filename))
-	return ext == ".c" || ext == ".cc" || ext == ".cpp" || ext == ".cxx"
-}
+// Note: Helper functions moved to gazelle package util.go
+// These functions are now accessed via gazelle.functionName()

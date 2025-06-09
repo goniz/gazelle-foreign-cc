@@ -1,6 +1,7 @@
 package gazelle
 
 import (
+	"log"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -225,3 +226,106 @@ func TestGenerateRules_ComplexCCProject_DepsGeneration(t *testing.T) {
 // - CMakeLists.txt with only add_library or only add_executable
 // - File names with unusual characters (if your regexes are too simple)
 // - Case variations in add_library/add_executable (already handled by (?i) in regex)
+
+func TestGenerateRules_ConfigureFile(t *testing.T) {
+	// Test the configure_file parsing functionality
+	relDir := "testdata/configure_file_example"
+	
+	// Files in the test directory
+	files := []string{
+		"CMakeLists.txt",
+		"config.h.in",
+		"src/lib.cpp",
+		"src/main.cpp",
+	}
+	
+	args := createMockGenerateArgs(t, relDir, files)
+	
+	result := GenerateRules(args)
+	
+	// Verify that rules were generated
+	if len(result.Gen) == 0 {
+		t.Fatal("Expected rules to be generated, but got none")
+	}
+	
+	// Create a map for easier lookup
+	rulesByName := make(map[string]*rule.Rule)
+	for _, r := range result.Gen {
+		rulesByName[r.Name()] = r
+	}
+	
+	// Check that cmake_configure_file rule was generated
+	configRule := rulesByName["config_h"]
+	if configRule == nil {
+		t.Fatal("Expected to find 'config_h' cmake_configure_file rule")
+	}
+	
+	if configRule.Kind() != "cmake_configure_file" {
+		t.Errorf("Expected rule kind 'cmake_configure_file', got '%s'", configRule.Kind())
+	}
+	
+	// Check attributes
+	out := configRule.AttrString("out")
+	if out != "config.h" {
+		t.Errorf("Expected out 'config.h', got '%s'", out)
+	}
+	
+	// Check new attributes
+	cmakeBinary := configRule.AttrString("cmake_binary")
+	if cmakeBinary != "//:cmake" {
+		t.Errorf("Expected cmake_binary '//:cmake', got '%s'", cmakeBinary)
+	}
+	
+	cmakeSourceDir := configRule.AttrString("cmake_source_dir")
+	if cmakeSourceDir != "." {
+		t.Errorf("Expected cmake_source_dir '.', got '%s'", cmakeSourceDir)
+	}
+	
+	generatedFilePath := configRule.AttrString("generated_file_path")
+	// generated_file_path should be optional when it equals the out attribute
+	// If not set explicitly, the rule should default it to the out path
+	if generatedFilePath != "" && generatedFilePath != "config.h" {
+		t.Errorf("Expected generated_file_path to be empty or 'config.h', got '%s'", generatedFilePath)
+	}
+	
+	// Check that cmake_source_files includes CMakeLists.txt and the input file
+	cmakeSourceFiles := configRule.AttrStrings("cmake_source_files")
+	expectedFiles := []string{"CMakeLists.txt", "config.h.in"}
+	if len(cmakeSourceFiles) != len(expectedFiles) {
+		t.Errorf("Expected cmake_source_files %v, got %v", expectedFiles, cmakeSourceFiles)
+	} else {
+		for i, expected := range expectedFiles {
+			if i >= len(cmakeSourceFiles) || cmakeSourceFiles[i] != expected {
+				t.Errorf("Expected cmake_source_files[%d] '%s', got '%s'", i, expected, cmakeSourceFiles[i])
+				break
+			}
+		}
+	}
+	
+	// Check that defines were set (stored as a private attribute)
+	if !hasDefines(configRule) {
+		t.Error("Expected defines to be set, but rule does not have defines attribute")
+	}
+	
+	// Check that regular cc_library and cc_binary rules were also generated
+	libRule := rulesByName["mylib"]
+	if libRule == nil {
+		t.Error("Expected to find 'mylib' cc_library rule")
+	} else if libRule.Kind() != "cc_library" {
+		t.Errorf("Expected mylib to be cc_library, got %s", libRule.Kind())
+	}
+	
+	appRule := rulesByName["app"]
+	if appRule == nil {
+		t.Error("Expected to find 'app' cc_binary rule")
+	} else if appRule.Kind() != "cc_binary" {
+		t.Errorf("Expected app to be cc_binary, got %s", appRule.Kind())
+	}
+	
+	log.Printf("ConfigureFile test completed successfully. Generated %d rules.", len(result.Gen))
+}
+
+// Helper function to check if a rule has defines attribute set
+func hasDefines(r *rule.Rule) bool {
+	return r.Attr("defines") != nil
+}

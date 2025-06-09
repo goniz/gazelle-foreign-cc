@@ -1,12 +1,31 @@
+load("@gazelle-foreign-cc//rules:cmake_configure_file.bzl", "cmake_configure_file")
 load("@rules_cc//cc:defs.bzl", "cc_library")
 
 # gazelle:cmake_source @libzmq
 # gazelle:cmake_define ZMQ_BUILD_TESTS OFF
 # gazelle:cmake_define WITH_PERF_TOOL OFF
 
-# This BUILD.bazel file demonstrates the cmake_source directive usage.
-# When gazelle runs, it will populate this file with cc_library and cc_binary
-# rules generated from the CMakeLists.txt found in the @libzmq external repository.
+cmake_configure_file(
+    name = "platform_hpp",
+    out = "platform.hpp",
+    cmake_binary = "//:cmake",
+    cmake_source_dir = ".",
+    cmake_source_files = ["@libzmq//:srcs"],
+    defines = {
+        "WITH_PERF_TOOL": "OFF",
+        "ZMQ_BUILD_TESTS": "OFF",
+    },
+    generated_file_path = "platform.hpp",
+)
+
+cc_library(
+    name = "libzmq",
+    hdrs = [
+        "@libzmq//:include/zmq.h",
+        "@libzmq//:include/zmq_utils.h",
+    ],
+    deps = [":objects"],
+)
 
 cc_library(
     name = "libzmq-static",
@@ -127,7 +146,7 @@ cc_library(
         "@libzmq//:src/zmtp_engine.cpp",
     ],
     hdrs = [
-        "@libzmq//:.cmake-build/platform.hpp",
+        ":platform_hpp",
         "@libzmq//:external/sha1/sha1.h",
         "@libzmq//:src/address.hpp",
         "@libzmq//:src/array.hpp",
@@ -275,13 +294,4 @@ cc_library(
         "@libzmq//.cmake-build",
         "@libzmq//include",
     ],
-)
-
-cc_library(
-    name = "libzmq",
-    hdrs = [
-        "@libzmq//:include/zmq.h",
-        "@libzmq//:include/zmq_utils.h",
-    ],
-    deps = [":objects"],
 )

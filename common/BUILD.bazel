@@ -1,0 +1,17 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "common",
+    srcs = [
+        "config.go",
+        "generate.go",
+        "types.go",
+    ],
+    importpath = "github.com/goniz/gazelle-foreign-cc/common",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@gazelle//config",
+        "@gazelle//language",
+        "@gazelle//rule",
+    ],
+)

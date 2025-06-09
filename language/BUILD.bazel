@@ -6,6 +6,7 @@ go_library(
     srcs = [
         "cmake.go",
         "cmake_api.go",
+        "util.go",
     ],
     importpath = "github.com/goniz/gazelle-foreign-cc/language",
     visibility = [
@@ -14,7 +15,7 @@ go_library(
         "//gazelle:__pkg__",
     ],  # Allow plugin binary to import this
     deps = [
-        "//gazelle:cmake_lib",
+        "//common",
         "@gazelle//config",
         "@gazelle//label",
         "@gazelle//language",
