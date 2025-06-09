@@ -13,11 +13,11 @@ cmake_configure_file(
     cmake_source_files = [
         "@libzmq//:srcs",
     ],
-    generated_file_path = "version.rc",
     defines = {
         "WITH_PERF_TOOL": "OFF",
         "ZMQ_BUILD_TESTS": "OFF",
     },
+    generated_file_path = "version.rc",
 )
 
 cmake_configure_file(
@@ -28,11 +28,11 @@ cmake_configure_file(
     cmake_source_files = [
         "@libzmq//:srcs",
     ],
-    generated_file_path = "platform.hpp",
     defines = {
         "WITH_PERF_TOOL": "OFF",
         "ZMQ_BUILD_TESTS": "OFF",
     },
+    generated_file_path = "platform.hpp",
 )
 
 cmake_configure_file(
@@ -43,11 +43,11 @@ cmake_configure_file(
     cmake_source_files = [
         "@libzmq//:srcs",
     ],
-    generated_file_path = "libzmq.pc",
     defines = {
         "WITH_PERF_TOOL": "OFF",
         "ZMQ_BUILD_TESTS": "OFF",
     },
+    generated_file_path = "libzmq.pc",
 )
 
 cc_library(
@@ -170,9 +170,6 @@ cc_library(
     ],
     hdrs = [
         ":platform_hpp",
-        "@libzmq//:include/zmq.h",
-        "@libzmq//:include/zmq_utils.h",
-        "@libzmq//:src/zmq_draft.h",
         "@libzmq//:external/sha1/sha1.h",
         "@libzmq//:src/address.hpp",
         "@libzmq//:src/array.hpp",
@@ -219,7 +216,6 @@ cc_library(
         "@libzmq//:src/io_object.hpp",
         "@libzmq//:src/io_thread.hpp",
         "@libzmq//:src/ip.hpp",
-        "@libzmq//:src/ip_resolver.hpp",
         "@libzmq//:src/ipc_address.hpp",
         "@libzmq//:src/ipc_connecter.hpp",
         "@libzmq//:src/ipc_listener.hpp",
@@ -261,7 +257,6 @@ cc_library(
         "@libzmq//:src/push.hpp",
         "@libzmq//:src/radio.hpp",
         "@libzmq//:src/random.hpp",
-        "@libzmq//:src/radix_tree.hpp",
         "@libzmq//:src/raw_decoder.hpp",
         "@libzmq//:src/raw_encoder.hpp",
         "@libzmq//:src/raw_engine.hpp",
@@ -309,15 +304,6 @@ cc_library(
         "@libzmq//:src/vmci_listener.hpp",
         "@libzmq//:src/windows.hpp",
         "@libzmq//:src/wire.hpp",
-        "@libzmq//:src/ws_address.hpp",
-        "@libzmq//:src/ws_connecter.hpp",
-        "@libzmq//:src/ws_decoder.hpp",
-        "@libzmq//:src/ws_encoder.hpp",
-        "@libzmq//:src/ws_engine.hpp",
-        "@libzmq//:src/ws_listener.hpp",
-        "@libzmq//:src/ws_protocol.hpp",
-        "@libzmq//:src/wss_address.hpp",
-        "@libzmq//:src/wss_engine.hpp",
         "@libzmq//:src/xpub.hpp",
         "@libzmq//:src/xsub.hpp",
         "@libzmq//:src/ypipe.hpp",
@@ -327,13 +313,13 @@ cc_library(
         "@libzmq//:src/zap_client.hpp",
         "@libzmq//:src/zmtp_engine.hpp",
     ],
-    includes = [
-        ".cmake-build",
-        "@libzmq//include",
-        "@libzmq",
-    ],
     copts = [
         "-isystem external/+_repo_rules+libzmq",
+    ],
+    includes = [
+        ".cmake-build",
+        "@libzmq",
+        "@libzmq//include",
     ],
 )
 
