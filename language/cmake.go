@@ -328,23 +328,45 @@ func (l *cmakeLang) generateRulesFromTargets(args language.GenerateArgs, cmakeTa
 		}
 		
 		r := rule.NewRule("cmake_configure_file", configFile.Name)
-		r.SetAttr("src", configFile.InputFile)
 		r.SetAttr("out", configFile.OutputFile)
 		
-		// Note: cmake_binary attribute is required but not set here
-		// Users must provide this in their BUILD files when using cmake_configure_file rules
-		// Example: cmake_binary = "@cmake//:cmake"
+		// Set cmake_binary to reference the cmake wrapper 
+		r.SetAttr("cmake_binary", "//:cmake")
 		
+		// Set cmake_source_dir to current directory (where CMakeLists.txt is)
+		r.SetAttr("cmake_source_dir", ".")
+		
+		// Include CMakeLists.txt and the input template file as sources
+		sourceFiles := []string{"CMakeLists.txt"}
+		if configFile.InputFile != "" && configFile.InputFile != "CMakeLists.txt" {
+			sourceFiles = append(sourceFiles, configFile.InputFile)
+		}
+		r.SetAttr("cmake_source_files", sourceFiles)
+		
+		// The generated_file_path is the output file relative to cmake build directory
+		r.SetAttr("generated_file_path", configFile.OutputFile)
+		
+		// Only include essential defines, let cmake figure out the rest
 		if len(configFile.Variables) > 0 {
-			r.SetAttr("defines", configFile.Variables)
+			essentialDefines := make(map[string]string)
+			for k, v := range configFile.Variables {
+				// Only include non-cmake internal variables
+				if !strings.HasPrefix(k, "CMAKE_") && !strings.Contains(k, "_EXECUTABLE") && 
+				   !strings.Contains(k, "_NOTFOUND") && k != "CC_HAS_TAUT_WARNING" {
+					essentialDefines[k] = v
+				}
+			}
+			if len(essentialDefines) > 0 {
+				r.SetAttr("defines", essentialDefines)
+			}
 		}
 		
 		// Store the output file name for reference by other rules
 		r.SetPrivateAttr("cmake_configure_output", configFile.OutputFile)
 		
 		result.Gen = append(result.Gen, r)
-		log.Printf("Generated cmake_configure_file %s in %s: %s -> %s with defines: %v",
-			r.Name(), args.Rel, configFile.InputFile, configFile.OutputFile, configFile.Variables)
+		log.Printf("Generated cmake_configure_file %s in %s -> %s with cmake source approach",
+			r.Name(), args.Rel, configFile.OutputFile)
 	}
 	
 	// Update imports array to match the new length
