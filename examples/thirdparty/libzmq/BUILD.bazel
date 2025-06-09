@@ -6,48 +6,25 @@ load("@rules_cc//cc:defs.bzl", "cc_library")
 # gazelle:cmake_define WITH_PERF_TOOL OFF
 
 cmake_configure_file(
-    name = "version_rc",
-    out = ".cmake-build/version.rc",
-    cmake_binary = "//:cmake",
-    cmake_source_dir = ".",
-    cmake_source_files = [
-        "@libzmq//:srcs",
-    ],
-    generated_file_path = "version.rc",
-    defines = {
-        "WITH_PERF_TOOL": "OFF",
-        "ZMQ_BUILD_TESTS": "OFF",
-    },
-)
-
-cmake_configure_file(
     name = "platform_hpp",
-    out = ".cmake-build/platform.hpp",
+    out = "platform.hpp",
     cmake_binary = "//:cmake",
     cmake_source_dir = ".",
-    cmake_source_files = [
-        "@libzmq//:srcs",
-    ],
-    generated_file_path = "platform.hpp",
+    cmake_source_files = ["@libzmq//:srcs"],
     defines = {
         "WITH_PERF_TOOL": "OFF",
         "ZMQ_BUILD_TESTS": "OFF",
     },
+    generated_file_path = "platform.hpp",
 )
 
-cmake_configure_file(
-    name = "libzmq_pc",
-    out = ".cmake-build/libzmq.pc",
-    cmake_binary = "//:cmake",
-    cmake_source_dir = ".",
-    cmake_source_files = [
-        "@libzmq//:srcs",
+cc_library(
+    name = "libzmq",
+    hdrs = [
+        "@libzmq//:include/zmq.h",
+        "@libzmq//:include/zmq_utils.h",
     ],
-    generated_file_path = "libzmq.pc",
-    defines = {
-        "WITH_PERF_TOOL": "OFF",
-        "ZMQ_BUILD_TESTS": "OFF",
-    },
+    deps = [":objects"],
 )
 
 cc_library(
@@ -170,9 +147,6 @@ cc_library(
     ],
     hdrs = [
         ":platform_hpp",
-        "@libzmq//:include/zmq.h",
-        "@libzmq//:include/zmq_utils.h",
-        "@libzmq//:src/zmq_draft.h",
         "@libzmq//:external/sha1/sha1.h",
         "@libzmq//:src/address.hpp",
         "@libzmq//:src/array.hpp",
@@ -219,7 +193,6 @@ cc_library(
         "@libzmq//:src/io_object.hpp",
         "@libzmq//:src/io_thread.hpp",
         "@libzmq//:src/ip.hpp",
-        "@libzmq//:src/ip_resolver.hpp",
         "@libzmq//:src/ipc_address.hpp",
         "@libzmq//:src/ipc_connecter.hpp",
         "@libzmq//:src/ipc_listener.hpp",
@@ -261,7 +234,6 @@ cc_library(
         "@libzmq//:src/push.hpp",
         "@libzmq//:src/radio.hpp",
         "@libzmq//:src/random.hpp",
-        "@libzmq//:src/radix_tree.hpp",
         "@libzmq//:src/raw_decoder.hpp",
         "@libzmq//:src/raw_encoder.hpp",
         "@libzmq//:src/raw_engine.hpp",
@@ -309,15 +281,6 @@ cc_library(
         "@libzmq//:src/vmci_listener.hpp",
         "@libzmq//:src/windows.hpp",
         "@libzmq//:src/wire.hpp",
-        "@libzmq//:src/ws_address.hpp",
-        "@libzmq//:src/ws_connecter.hpp",
-        "@libzmq//:src/ws_decoder.hpp",
-        "@libzmq//:src/ws_encoder.hpp",
-        "@libzmq//:src/ws_engine.hpp",
-        "@libzmq//:src/ws_listener.hpp",
-        "@libzmq//:src/ws_protocol.hpp",
-        "@libzmq//:src/wss_address.hpp",
-        "@libzmq//:src/wss_engine.hpp",
         "@libzmq//:src/xpub.hpp",
         "@libzmq//:src/xsub.hpp",
         "@libzmq//:src/ypipe.hpp",
@@ -328,20 +291,7 @@ cc_library(
         "@libzmq//:src/zmtp_engine.hpp",
     ],
     includes = [
-        ".cmake-build",
+        "@libzmq//.cmake-build",
         "@libzmq//include",
-        "@libzmq",
     ],
-    copts = [
-        "-isystem external/+_repo_rules+libzmq",
-    ],
-)
-
-cc_library(
-    name = "libzmq",
-    hdrs = [
-        "@libzmq//:include/zmq.h",
-        "@libzmq//:include/zmq_utils.h",
-    ],
-    deps = [":objects"],
 )

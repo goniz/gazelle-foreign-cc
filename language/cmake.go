@@ -412,10 +412,7 @@ func (l *cmakeLang) generateRulesFromTargetsWithRepoAndAPI(args language.Generat
 		// Include CMakeLists.txt and the input template file as sources
 		var sourceFiles []string
 		if externalRepo != "" {
-			sourceFiles = []string{"@" + externalRepo + "//:CMakeLists.txt"}
-			if configFile.InputFile != "" && configFile.InputFile != "CMakeLists.txt" {
-				sourceFiles = append(sourceFiles, inputFileRef)
-			}
+			sourceFiles = []string{"@" + externalRepo + "//:srcs"}
 		} else {
 			sourceFiles = []string{"CMakeLists.txt"}
 			if configFile.InputFile != "" && configFile.InputFile != "CMakeLists.txt" {
