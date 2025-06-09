@@ -12,7 +12,7 @@ import (
 	"strings"
 	"log"
 
-	"github.com/goniz/gazelle-foreign-cc/gazelle"
+	"github.com/goniz/gazelle-foreign-cc/common"
 )
 
 // CMake File API structures
@@ -182,7 +182,7 @@ func (api *CMakeFileAPI) CreateQuery() error {
 }
 
 // DetectConfigureFileCommands detects configure_file commands using CMake File API
-func (api *CMakeFileAPI) DetectConfigureFileCommands() ([]*gazelle.CMakeConfigureFile, error) {
+func (api *CMakeFileAPI) DetectConfigureFileCommands() ([]*common.CMakeConfigureFile, error) {
 	// Ensure we have File API responses available
 	if !api.configured {
 		if err := api.CreateQuery(); err != nil {
@@ -319,7 +319,7 @@ func (api *CMakeFileAPI) ReadAPIResponse() (*APIIndex, *Codemodel, map[string]*T
 }
 
 // GenerateFromAPI generates Bazel rules using CMake File API
-func (api *CMakeFileAPI) GenerateFromAPI(relativeDir string) ([]*gazelle.CMakeTarget, error) {
+func (api *CMakeFileAPI) GenerateFromAPI(relativeDir string) ([]*common.CMakeTarget, error) {
 	// Ensure we have File API responses available
 	if !api.configured {
 		// Create query files
@@ -341,7 +341,7 @@ func (api *CMakeFileAPI) GenerateFromAPI(relativeDir string) ([]*gazelle.CMakeTa
 	}
 
 	// Convert targets to CMakeTarget format
-	var cmakeTargets []*gazelle.CMakeTarget
+	var cmakeTargets []*common.CMakeTarget
 
 	for _, target := range targets {
 		// Skip utility targets and imported targets
@@ -349,7 +349,7 @@ func (api *CMakeFileAPI) GenerateFromAPI(relativeDir string) ([]*gazelle.CMakeTa
 			continue
 		}
 
-		cmakeTarget := &gazelle.CMakeTarget{
+		cmakeTarget := &common.CMakeTarget{
 			Name: target.Name,
 		}
 
@@ -376,10 +376,10 @@ func (api *CMakeFileAPI) GenerateFromAPI(relativeDir string) ([]*gazelle.CMakeTa
 
 			// Only include files that are in the current directory or subdirectories
 			if !strings.HasPrefix(sourcePath, "..") {
-				if gazelle.IsHeaderFile(sourcePath) {
-					cmakeTarget.Headers = gazelle.AppendIfMissing(cmakeTarget.Headers, sourcePath)
-				} else if gazelle.IsSourceFile(sourcePath) {
-					cmakeTarget.Sources = gazelle.AppendIfMissing(cmakeTarget.Sources, sourcePath)
+				if isHeaderFile(sourcePath) {
+					cmakeTarget.Headers = appendIfMissing(cmakeTarget.Headers, sourcePath)
+				} else if isSourceFile(sourcePath) {
+					cmakeTarget.Sources = appendIfMissing(cmakeTarget.Sources, sourcePath)
 				}
 			}
 		}
@@ -391,7 +391,7 @@ func (api *CMakeFileAPI) GenerateFromAPI(relativeDir string) ([]*gazelle.CMakeTa
 		// Extract linked libraries from dependencies
 		for _, dep := range target.Dependencies {
 			if depTarget, exists := targets[dep.ID]; exists {
-				cmakeTarget.LinkedLibraries = gazelle.AppendIfMissing(cmakeTarget.LinkedLibraries, depTarget.Name)
+				cmakeTarget.LinkedLibraries = appendIfMissing(cmakeTarget.LinkedLibraries, depTarget.Name)
 			}
 		}
 
@@ -402,7 +402,7 @@ func (api *CMakeFileAPI) GenerateFromAPI(relativeDir string) ([]*gazelle.CMakeTa
 				// Parse library names from fragments
 				libName := strings.TrimSpace(lib.Fragment)
 				if libName != "" && !strings.HasPrefix(libName, "-") {
-					cmakeTarget.LinkedLibraries = gazelle.AppendIfMissing(cmakeTarget.LinkedLibraries, libName)
+					cmakeTarget.LinkedLibraries = appendIfMissing(cmakeTarget.LinkedLibraries, libName)
 				}
 			}
 			
@@ -420,7 +420,7 @@ func (api *CMakeFileAPI) GenerateFromAPI(relativeDir string) ([]*gazelle.CMakeTa
 								libName = strings.TrimSuffix(libName, ".so")
 							}
 						}
-						cmakeTarget.LinkedLibraries = gazelle.AppendIfMissing(cmakeTarget.LinkedLibraries, libName)
+						cmakeTarget.LinkedLibraries = appendIfMissing(cmakeTarget.LinkedLibraries, libName)
 					}
 				}
 			}
@@ -472,7 +472,7 @@ func (api *CMakeFileAPI) loadCache() error {
 }
 
 // parseCMakeListsForConfigureFile parses CMakeLists.txt for configure_file commands
-func (api *CMakeFileAPI) parseCMakeListsForConfigureFile() ([]*gazelle.CMakeConfigureFile, error) {
+func (api *CMakeFileAPI) parseCMakeListsForConfigureFile() ([]*common.CMakeConfigureFile, error) {
 	cmakeListsPath := filepath.Join(api.sourceDir, "CMakeLists.txt")
 	
 	file, err := os.Open(cmakeListsPath)
@@ -481,7 +481,7 @@ func (api *CMakeFileAPI) parseCMakeListsForConfigureFile() ([]*gazelle.CMakeConf
 	}
 	defer file.Close()
 	
-	var configureFiles []*gazelle.CMakeConfigureFile
+	var configureFiles []*common.CMakeConfigureFile
 	variables := make(map[string]string)
 	
 	// Add cache variables first
@@ -543,7 +543,7 @@ func (api *CMakeFileAPI) parseCMakeListsForConfigureFile() ([]*gazelle.CMakeConf
 			configVars[k] = v
 		}
 		
-		configureFiles = append(configureFiles, &gazelle.CMakeConfigureFile{
+		configureFiles = append(configureFiles, &common.CMakeConfigureFile{
 			Name:       ruleName,
 			InputFile:  inputFile,
 			OutputFile: outputFile,
@@ -596,7 +596,7 @@ func extractIncludeDirectories(target *Target, sourceDir string) []string {
 				}
 			}
 			if !strings.HasPrefix(includePath, "..") && !include.IsSystem {
-				includeDirectories = gazelle.AppendIfMissing(includeDirectories, includePath)
+				includeDirectories = appendIfMissing(includeDirectories, includePath)
 			}
 		}
 	}

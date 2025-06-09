@@ -14,7 +14,7 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/resolve"
 	"github.com/bazelbuild/rules_go/go/tools/bazel"
 	"github.com/bazelbuild/bazel-gazelle/rule"
-	"github.com/goniz/gazelle-foreign-cc/gazelle"
+	"github.com/goniz/gazelle-foreign-cc/common"
 )
 
 // cmakeLang implements the language.Language interface for CMake.
@@ -57,7 +57,7 @@ func (l *cmakeLang) KnownDirectives() []string {
 	// Combine directives known by the language itself and by the configurer.
 	// This helps Gazelle recognize all valid directives.
 	baseDirectives := []string{"gazelle:prefix"}                   // Directives handled by Gazelle itself or the language directly
-	configDirectives := gazelle.NewCMakeConfig().KnownDirectives() // Directives handled by CMakeConfig
+	configDirectives := common.NewCMakeConfig().KnownDirectives() // Directives handled by CMakeConfig
 	return append(baseDirectives, configDirectives...)
 }
 
@@ -68,7 +68,7 @@ func (l *cmakeLang) Configure(c *config.Config, rel string, f *rule.File) {
 		return // Not a BUILD file, skip.
 	}
 
-	cfg := gazelle.GetCMakeConfig(c)
+	cfg := common.GetCMakeConfig(c)
 
 	// Let the CMakeConfig handle its own directives
 	cfg.Configure(c, rel, f)
@@ -135,7 +135,7 @@ func (l *cmakeLang) Loads() []rule.LoadInfo {
 // GenerateRules is called in each directory where an update is requested
 // in resolve or generate mode.
 func (l *cmakeLang) GenerateRules(args language.GenerateArgs) language.GenerateResult {
-	cfg := gazelle.GetCMakeConfig(args.Config)
+	cfg := common.GetCMakeConfig(args.Config)
 
 	// Check for cmake_source directive in the current BUILD file
 	var cmakeSource string
@@ -173,7 +173,7 @@ func (l *cmakeLang) GenerateRules(args language.GenerateArgs) language.GenerateR
 	if err != nil {
 		log.Printf("CMake File API failed for %s: %v. Falling back to regex parsing.", args.Rel, err)
 		// Fallback to regex-based parsing using the existing function from gazelle package
-		return gazelle.GenerateRules(args)
+		return common.GenerateRules(args)
 	}
 
 	return l.generateRulesFromTargets(args, cmakeTargets)
@@ -220,7 +220,7 @@ func (l *cmakeLang) generateRulesFromExternalSource(args language.GenerateArgs, 
 	log.Printf("Found CMakeLists.txt in external repository at: %s", cmakeFilePath)
 
 	// Process the external CMake project
-	cfg := gazelle.GetCMakeConfig(args.Config)
+	cfg := common.GetCMakeConfig(args.Config)
 	buildDir := filepath.Join(externalRepoPath, ".cmake-build")
 	api := NewCMakeFileAPI(externalRepoPath, buildDir, cfg.CMakeExecutable, cfg.CMakeDefines)
 
@@ -230,7 +230,7 @@ func (l *cmakeLang) generateRulesFromExternalSource(args language.GenerateArgs, 
 		// Create a modified args for the external directory
 		externalArgs := args
 		externalArgs.Dir = externalRepoPath
-		return gazelle.GenerateRules(externalArgs)
+		return common.GenerateRules(externalArgs)
 	}
 
 	log.Printf("Successfully parsed %d CMake targets from external repository %s", len(cmakeTargets), repoName)
@@ -302,12 +302,12 @@ func (l *cmakeLang) findRepoViaRunfiles(repoName string) string {
 }
 
 // generateRulesFromTargets converts CMakeTarget objects to Bazel rules
-func (l *cmakeLang) generateRulesFromTargets(args language.GenerateArgs, cmakeTargets []*gazelle.CMakeTarget) language.GenerateResult {
+func (l *cmakeLang) generateRulesFromTargets(args language.GenerateArgs, cmakeTargets []*common.CMakeTarget) language.GenerateResult {
 	// First generate rules from CMake targets
 	result := l.generateRulesFromTargetsWithRepo(args, cmakeTargets, "")
 	
 	// Additionally, detect configure_file commands using CMake File API approach
-	cfg := gazelle.GetCMakeConfig(args.Config)
+	cfg := common.GetCMakeConfig(args.Config)
 	buildDir := filepath.Join(args.Dir, ".cmake-build")
 	
 	// Use CMake File API to detect configure_file commands
@@ -316,7 +316,7 @@ func (l *cmakeLang) generateRulesFromTargets(args language.GenerateArgs, cmakeTa
 	if err != nil {
 		log.Printf("CMake File API configure_file detection failed for %s: %v", args.Rel, err)
 		// Fallback to empty list - don't use regex parsing
-		configureFiles = []*gazelle.CMakeConfigureFile{}
+		configureFiles = []*common.CMakeConfigureFile{}
 	}
 	
 	// Generate cmake_configure_file rules from detected configure_file commands
@@ -364,7 +364,7 @@ func fileExistsInRegularFiles(filename string, regularFiles []string) bool {
 }
 
 // generateRulesFromTargetsWithRepo converts CMakeTarget objects to Bazel rules, with optional external repository context
-func (l *cmakeLang) generateRulesFromTargetsWithRepo(args language.GenerateArgs, cmakeTargets []*gazelle.CMakeTarget, externalRepo string) language.GenerateResult {
+func (l *cmakeLang) generateRulesFromTargetsWithRepo(args language.GenerateArgs, cmakeTargets []*common.CMakeTarget, externalRepo string) language.GenerateResult {
 	res := language.GenerateResult{}
 	
 	// Create a map of target names for quick lookup to identify local targets
@@ -501,7 +501,7 @@ func (l *cmakeLang) fileExistsInDir(filename, dir string) bool {
 // this language extension manages.
 func (l *cmakeLang) UpdateRules(args language.GenerateArgs) language.GenerateResult {
 	log.Printf("cmakeLang.UpdateRules: Called for package %s", args.Rel)
-	cfg := gazelle.GetCMakeConfig(args.Config)
+	cfg := common.GetCMakeConfig(args.Config)
 	_ = cfg // Use cfg if needed for update logic based on configuration
 
 	// In a more sophisticated plugin, you might iterate over args.File.Rules
