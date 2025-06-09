@@ -22,10 +22,17 @@ def _cmake_configure_file_impl(ctx):
     for key, value in ctx.attr.defines.items():
         define_args.append('-D%s=%s' % (key, value))
     
-    # Get source files if provided
+    # Get source files and derive the actual source directory
     inputs = []
+    actual_source_dir = "."
     if ctx.attr.cmake_source_files:
         inputs.extend(ctx.files.cmake_source_files)
+        # Find CMakeLists.txt in the inputs to determine the source directory
+        for file in ctx.files.cmake_source_files:
+            if file.basename == "CMakeLists.txt":
+                # Use the directory containing CMakeLists.txt
+                actual_source_dir = file.dirname
+                break
     
     # Run cmake configure to generate files
     ctx.actions.run(
@@ -33,7 +40,7 @@ def _cmake_configure_file_impl(ctx):
         outputs = [build_dir],
         executable = cmake_binary,
         arguments = [
-            "-S", cmake_source_dir,
+            "-S", actual_source_dir,
             "-B", build_dir.path,
         ] + define_args,
         mnemonic = "CMakeConfigure",
