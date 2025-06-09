@@ -274,7 +274,27 @@ func generateRulesFromCMakeFile(args language.GenerateArgs, cmakeFilePath string
 		}
 	}
 	
-	// Note: cmake_configure_file rule generation moved to CMake File API approach in language/cmake.go
+	// Also detect configure_file commands and generate cmake_configure_file rules
+	configureFiles := parseCMakeListsForConfigureFileInOldPath(cmakeFilePath, variables)
+	for _, configFile := range configureFiles {
+		// Check if the input file exists in the current directory
+		if !FileExists(configFile.InputFile, args.RegularFiles) {
+			log.Printf("Input file %s for configure_file not found in current directory, skipping.", configFile.InputFile)
+			continue
+		}
+		
+		r := rule.NewRule("cmake_configure_file", configFile.Name)
+		r.SetAttr("src", configFile.InputFile)
+		r.SetAttr("out", configFile.OutputFile)
+		
+		if len(configFile.Variables) > 0 {
+			r.SetAttr("defines", configFile.Variables)
+		}
+		
+		res.Gen = append(res.Gen, r)
+		log.Printf("Generated cmake_configure_file %s in %s: %s -> %s with defines: %v",
+			r.Name(), args.Rel, configFile.InputFile, configFile.OutputFile, configFile.Variables)
+	}
 	
 	// Gazelle expects Imports to have the same length as Gen. Populate with nils for now.
 	if len(res.Gen) > 0 && len(res.Imports) == 0 {
@@ -297,4 +317,75 @@ func GenerateRules(args language.GenerateArgs) language.GenerateResult {
 
 	// Use regex-based parsing (fallback method)
 	return generateRulesFromCMakeFile(args, cmakeFilePath, cfg)
+}
+
+// parseCMakeListsForConfigureFileInOldPath parses CMakeLists.txt for configure_file commands (old path version)
+func parseCMakeListsForConfigureFileInOldPath(cmakeFilePath string, variables map[string]string) []*CMakeConfigureFile {
+	file, err := os.Open(cmakeFilePath)
+	if err != nil {
+		log.Printf("Failed to open CMakeLists.txt for configure_file parsing: %v", err)
+		return nil
+	}
+	defer file.Close()
+
+	var configureFiles []*CMakeConfigureFile
+	configVars := make(map[string]string)
+	
+	// Copy existing variables
+	for k, v := range variables {
+		configVars[k] = v
+	}
+	
+	// Add standard CMake variables
+	configVars["CMAKE_CURRENT_SOURCE_DIR"] = "."
+	if projectName, exists := configVars["PROJECT_NAME"]; !exists || projectName == "" {
+		configVars["PROJECT_NAME"] = "project"
+	}
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		
+		// Parse configure_file() commands
+		configMatch := regexp.MustCompile(`^configure_file\s*\(\s*([^)\s]+)\s+([^)\s]+)`).FindStringSubmatch(line)
+		if configMatch == nil {
+			continue
+		}
+		
+		inputFile := strings.Trim(configMatch[1], `"`)
+		outputFile := strings.Trim(configMatch[2], `"`)
+		
+		// Make paths relative if absolute
+		if filepath.IsAbs(inputFile) {
+			if rel, err := filepath.Rel(filepath.Dir(cmakeFilePath), inputFile); err == nil {
+				inputFile = rel
+			}
+		}
+		if filepath.IsAbs(outputFile) {
+			if rel, err := filepath.Rel(filepath.Dir(cmakeFilePath), outputFile); err == nil {
+				outputFile = rel
+			}
+		}
+		
+		// Generate rule name from output file
+		ruleName := strings.ReplaceAll(strings.ReplaceAll(filepath.Base(outputFile), ".", "_"), "/", "_")
+		if ruleName == "" {
+			ruleName = "config_file"
+		}
+		
+		// Copy variables for this configure_file
+		copyVars := make(map[string]string)
+		for k, v := range configVars {
+			copyVars[k] = v
+		}
+		
+		configureFiles = append(configureFiles, &CMakeConfigureFile{
+			Name:       ruleName,
+			InputFile:  inputFile,
+			OutputFile: outputFile,
+			Variables:  copyVars,
+		})
+	}
+
+	return configureFiles
 }
