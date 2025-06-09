@@ -432,9 +432,17 @@ func (l *cmakeLang) generateRulesFromTargetsWithRepoAndAPI(args language.Generat
 		r.SetAttr("cmake_source_dir", ".")
 		
 		// Include CMakeLists.txt and the input template file as sources
-		sourceFiles := []string{"CMakeLists.txt"}
-		if configFile.InputFile != "" && configFile.InputFile != "CMakeLists.txt" {
-			sourceFiles = append(sourceFiles, configFile.InputFile)
+		var sourceFiles []string
+		if externalRepo != "" {
+			sourceFiles = []string{"@" + externalRepo + "//:CMakeLists.txt"}
+			if configFile.InputFile != "" && configFile.InputFile != "CMakeLists.txt" {
+				sourceFiles = append(sourceFiles, inputFileRef)
+			}
+		} else {
+			sourceFiles = []string{"CMakeLists.txt"}
+			if configFile.InputFile != "" && configFile.InputFile != "CMakeLists.txt" {
+				sourceFiles = append(sourceFiles, configFile.InputFile)
+			}
 		}
 		r.SetAttr("cmake_source_files", sourceFiles)
 		

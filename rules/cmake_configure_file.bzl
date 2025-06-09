@@ -98,7 +98,6 @@ cmake_configure_file = rule(
             cfg = "exec",
             mandatory = True,
             doc = "The cmake binary to use",
-            allow_single_file = True,
         ),
         "cmake_source_dir": attr.string(
             mandatory = True,
