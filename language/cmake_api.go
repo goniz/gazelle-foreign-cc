@@ -519,6 +519,10 @@ func (api *CMakeFileAPI) parseCMakeListsForConfigureFile() ([]*common.CMakeConfi
 		inputFile := strings.Trim(configMatch[1], `"`)
 		outputFile := strings.Trim(configMatch[2], `"`)
 		
+		// Resolve CMake variables in paths
+		inputFile = api.resolveCMakeVariables(inputFile, variables)
+		outputFile = api.resolveCMakeVariables(outputFile, variables)
+		
 		// Make paths relative if absolute
 		if filepath.IsAbs(inputFile) {
 			if rel, err := filepath.Rel(api.sourceDir, inputFile); err == nil {
@@ -558,6 +562,36 @@ func (api *CMakeFileAPI) parseCMakeListsForConfigureFile() ([]*common.CMakeConfi
 	}
 	
 	return configureFiles, nil
+}
+
+// resolveCMakeVariables resolves CMake variables in a string
+func (api *CMakeFileAPI) resolveCMakeVariables(input string, variables map[string]string) string {
+	result := input
+	
+	// For external repositories, handle CMAKE_CURRENT_SOURCE_DIR specially
+	// Replace with empty string and then handle the path normalization
+	result = strings.ReplaceAll(result, "${CMAKE_CURRENT_SOURCE_DIR}/", "")
+	result = strings.ReplaceAll(result, "${CMAKE_CURRENT_SOURCE_DIR}", "")
+	
+	// Handle CMAKE_CURRENT_BINARY_DIR
+	result = strings.ReplaceAll(result, "${CMAKE_CURRENT_BINARY_DIR}/", ".cmake-build/")
+	result = strings.ReplaceAll(result, "${CMAKE_CURRENT_BINARY_DIR}", ".cmake-build")
+	
+	// Then apply user-defined variables
+	for varName, varValue := range variables {
+		result = strings.ReplaceAll(result, "${"+varName+"}", varValue)
+	}
+	
+	// Clean up paths for Bazel labels
+	// Remove leading "./" and ensure proper path format
+	if strings.HasPrefix(result, "./") {
+		result = result[2:]
+	}
+	
+	// Remove any leading slashes that might remain
+	result = strings.TrimPrefix(result, "/")
+	
+	return result
 }
 
 // Helper functions

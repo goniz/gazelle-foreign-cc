@@ -5,6 +5,13 @@
 
 load("@gazelle//:def.bzl", "gazelle")
 
+# Simple wrapper for system cmake binary
+sh_binary(
+    name = "cmake",
+    srcs = ["cmake_wrapper.sh"],
+    visibility = ["//visibility:public"],
+)
+
 # Default gazelle target for examples
 gazelle(
     name = "gazelle",

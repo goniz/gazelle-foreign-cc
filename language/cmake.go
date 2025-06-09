@@ -125,7 +125,7 @@ func (l *cmakeLang) Loads() []rule.LoadInfo {
 			Symbols: []string{"cc_library", "cc_binary", "cc_test"},
 		},
 		{
-			Name:    "//rules:cmake_configure_file.bzl",
+			Name:    "@gazelle-foreign-cc//rules:cmake_configure_file.bzl",
 			Symbols: []string{"cmake_configure_file"},
 		},
 	}
@@ -239,7 +239,7 @@ func (l *cmakeLang) generateRulesFromExternalSource(args language.GenerateArgs, 
 	// This is needed so that source file existence checks work correctly
 	externalArgs := args
 	externalArgs.Dir = externalRepoPath
-	return l.generateRulesFromTargetsWithRepo(externalArgs, cmakeTargets, repoName)
+	return l.generateRulesFromTargetsWithRepoAndAPI(externalArgs, cmakeTargets, repoName, api)
 }
 
 // findExternalRepo attempts to locate an external repository
@@ -304,7 +304,7 @@ func (l *cmakeLang) findRepoViaRunfiles(repoName string) string {
 // generateRulesFromTargets converts CMakeTarget objects to Bazel rules
 func (l *cmakeLang) generateRulesFromTargets(args language.GenerateArgs, cmakeTargets []*common.CMakeTarget) language.GenerateResult {
 	// First generate rules from CMake targets
-	result := l.generateRulesFromTargetsWithRepo(args, cmakeTargets, "")
+	result := l.generateRulesFromTargetsWithRepoAndAPI(args, cmakeTargets, "", nil)
 	
 	// Additionally, detect configure_file commands using CMake File API approach
 	cfg := common.GetCMakeConfig(args.Config)
@@ -363,9 +363,75 @@ func fileExistsInRegularFiles(filename string, regularFiles []string) bool {
 	return false
 }
 
-// generateRulesFromTargetsWithRepo converts CMakeTarget objects to Bazel rules, with optional external repository context
-func (l *cmakeLang) generateRulesFromTargetsWithRepo(args language.GenerateArgs, cmakeTargets []*common.CMakeTarget, externalRepo string) language.GenerateResult {
+// generateRulesFromTargetsWithRepoAndAPI converts CMakeTarget objects to Bazel rules, with optional external repository context and CMakeFileAPI
+func (l *cmakeLang) generateRulesFromTargetsWithRepoAndAPI(args language.GenerateArgs, cmakeTargets []*common.CMakeTarget, externalRepo string, api *CMakeFileAPI) language.GenerateResult {
 	res := language.GenerateResult{}
+	
+	// Additionally, detect configure_file commands using CMake File API approach
+	var configureFiles []*common.CMakeConfigureFile
+	if api != nil {
+		// Use the provided API instance (for external repositories)
+		var err error
+		configureFiles, err = api.DetectConfigureFileCommands()
+		if err != nil {
+			log.Printf("CMake File API configure_file detection failed for %s: %v", args.Rel, err)
+			configureFiles = []*common.CMakeConfigureFile{}
+		}
+	} else {
+		// Create a new API instance for local directories
+		cfg := common.GetCMakeConfig(args.Config)
+		buildDir := filepath.Join(args.Dir, ".cmake-build")
+		localAPI := NewCMakeFileAPI(args.Dir, buildDir, cfg.CMakeExecutable, cfg.CMakeDefines)
+		var err error
+		configureFiles, err = localAPI.DetectConfigureFileCommands()
+		if err != nil {
+			log.Printf("CMake File API configure_file detection failed for %s: %v", args.Rel, err)
+			configureFiles = []*common.CMakeConfigureFile{}
+		}
+	}
+	
+	// Generate cmake_configure_file rules from detected configure_file commands
+	for _, configFile := range configureFiles {
+		// For external repos, we need to check if the input file exists in the external repo
+		var inputFileRef string
+		if externalRepo != "" {
+			// Check if the input file exists in the external repository
+			inputFilePath := filepath.Join(args.Dir, configFile.InputFile)
+			if _, err := os.Stat(inputFilePath); err == nil {
+				// Clean up the input file path for Bazel label
+				cleanInputFile := strings.TrimPrefix(configFile.InputFile, "./")
+				inputFileRef = "@" + externalRepo + "//:" + cleanInputFile
+			} else {
+				log.Printf("Input file %s for configure_file not found in external repository %s, skipping.", configFile.InputFile, externalRepo)
+				continue
+			}
+		} else {
+			// Check if the input file exists in the current directory
+			if !fileExistsInRegularFiles(configFile.InputFile, args.RegularFiles) {
+				log.Printf("Input file %s for configure_file not found in current directory, skipping.", configFile.InputFile)
+				continue
+			}
+			inputFileRef = configFile.InputFile
+		}
+		
+		r := rule.NewRule("cmake_configure_file", configFile.Name)
+		r.SetAttr("src", inputFileRef)
+		r.SetAttr("out", configFile.OutputFile)
+		
+		// Set cmake_binary to use the examples cmake target
+		r.SetAttr("cmake_binary", "//:cmake")
+		
+		if len(configFile.Variables) > 0 {
+			r.SetAttr("defines", configFile.Variables)
+		}
+		
+		// Store the output file name for reference by other rules
+		r.SetPrivateAttr("cmake_configure_output", configFile.OutputFile)
+		
+		res.Gen = append(res.Gen, r)
+		log.Printf("Generated cmake_configure_file %s in %s: %s -> %s with defines: %v",
+			r.Name(), args.Rel, inputFileRef, configFile.OutputFile, configFile.Variables)
+	}
 	
 	// Create a map of target names for quick lookup to identify local targets
 	targetNames := make(map[string]bool)
