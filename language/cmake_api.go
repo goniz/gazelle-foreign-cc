@@ -471,26 +471,6 @@ func (api *CMakeFileAPI) loadCache() error {
 	return nil
 }
 
-// isEssentialCMakeVariable determines if a CMake variable should be passed to configure_file
-// Most CMake internal variables should be determined automatically by cmake configure
-func isEssentialCMakeVariable(name string) bool {
-	essentialVars := []string{
-		"CMAKE_BUILD_TYPE",
-		"CMAKE_INSTALL_PREFIX", 
-		"CMAKE_PREFIX_PATH",
-		"CMAKE_TOOLCHAIN_FILE",
-		"CMAKE_CROSSCOMPILING",
-		"CMAKE_SYSTEM_NAME",
-		"CMAKE_SYSTEM_PROCESSOR",
-	}
-	
-	for _, essential := range essentialVars {
-		if name == essential {
-			return true
-		}
-	}
-	return false
-}
 
 // parseCMakeListsForConfigureFile parses CMakeLists.txt for configure_file commands
 func (api *CMakeFileAPI) parseCMakeListsForConfigureFile() ([]*common.CMakeConfigureFile, error) {
@@ -505,38 +485,20 @@ func (api *CMakeFileAPI) parseCMakeListsForConfigureFile() ([]*common.CMakeConfi
 	var configureFiles []*common.CMakeConfigureFile
 	variables := make(map[string]string)
 	
-	// Filter out CMake internal variables since cmake configure will determine them automatically
-	// Only include essential user-defined variables
-	for k, v := range api.cache {
-		// Skip CMake internal variables - cmake will determine these automatically
-		if strings.HasPrefix(k, "CMAKE_") && !isEssentialCMakeVariable(k) {
-			continue
-		}
-		variables[k] = v
-	}
-	
-	// Add cmake defines
+	// Only include cmake defines from gazelle directives (not variables discovered by File API)
+	// The cmake binary will handle determining all other variables automatically
 	for k, v := range api.cmakeDefines {
 		variables[k] = v
 	}
 	
-	// Add standard CMake variables
+	// Add essential CMake variables needed for path resolution
 	variables["CMAKE_CURRENT_SOURCE_DIR"] = "."
-	if projectName, exists := variables["PROJECT_NAME"]; !exists || projectName == "" {
-		variables["PROJECT_NAME"] = "project"
-	}
 	
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
 		
-		// Parse set() commands
-		if setMatch := regexp.MustCompile(`^set\s*\(\s*(\w+)\s+"?([^")]+)"?\s*\)`).FindStringSubmatch(line); setMatch != nil {
-			variables[setMatch[1]] = setMatch[2]
-			continue
-		}
-		
-		// Parse configure_file() commands
+		// Parse configure_file() commands (skip set() commands since we only want gazelle directive defines)
 		configMatch := regexp.MustCompile(`^configure_file\s*\(\s*([^)\s]+)\s+([^)\s]+)`).FindStringSubmatch(line)
 		if configMatch == nil {
 			continue

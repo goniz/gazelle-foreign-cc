@@ -265,14 +265,39 @@ func TestGenerateRules_ConfigureFile(t *testing.T) {
 	}
 	
 	// Check attributes
-	src := configRule.AttrString("src")
-	if src != "config.h.in" {
-		t.Errorf("Expected src 'config.h.in', got '%s'", src)
-	}
-	
 	out := configRule.AttrString("out")
 	if out != "config.h" {
 		t.Errorf("Expected out 'config.h', got '%s'", out)
+	}
+	
+	// Check new attributes
+	cmakeBinary := configRule.AttrString("cmake_binary")
+	if cmakeBinary != "//:cmake" {
+		t.Errorf("Expected cmake_binary '//:cmake', got '%s'", cmakeBinary)
+	}
+	
+	cmakeSourceDir := configRule.AttrString("cmake_source_dir")
+	if cmakeSourceDir != "." {
+		t.Errorf("Expected cmake_source_dir '.', got '%s'", cmakeSourceDir)
+	}
+	
+	generatedFilePath := configRule.AttrString("generated_file_path")
+	if generatedFilePath != "config.h" {
+		t.Errorf("Expected generated_file_path 'config.h', got '%s'", generatedFilePath)
+	}
+	
+	// Check that cmake_source_files includes CMakeLists.txt and the input file
+	cmakeSourceFiles := configRule.AttrStrings("cmake_source_files")
+	expectedFiles := []string{"CMakeLists.txt", "config.h.in"}
+	if len(cmakeSourceFiles) != len(expectedFiles) {
+		t.Errorf("Expected cmake_source_files %v, got %v", expectedFiles, cmakeSourceFiles)
+	} else {
+		for i, expected := range expectedFiles {
+			if i >= len(cmakeSourceFiles) || cmakeSourceFiles[i] != expected {
+				t.Errorf("Expected cmake_source_files[%d] '%s', got '%s'", i, expected, cmakeSourceFiles[i])
+				break
+			}
+		}
 	}
 	
 	// Check that defines were set (stored as a private attribute)

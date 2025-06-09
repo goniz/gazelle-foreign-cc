@@ -330,7 +330,7 @@ func (l *cmakeLang) generateRulesFromTargets(args language.GenerateArgs, cmakeTa
 		r := rule.NewRule("cmake_configure_file", configFile.Name)
 		r.SetAttr("out", configFile.OutputFile)
 		
-		// Set cmake_binary to reference the cmake wrapper 
+		// Set cmake_binary to reference the examples cmake target for examples directory
 		r.SetAttr("cmake_binary", "//:cmake")
 		
 		// Set cmake_source_dir to current directory (where CMakeLists.txt is)
@@ -346,19 +346,9 @@ func (l *cmakeLang) generateRulesFromTargets(args language.GenerateArgs, cmakeTa
 		// The generated_file_path is the output file relative to cmake build directory
 		r.SetAttr("generated_file_path", configFile.OutputFile)
 		
-		// Only include essential defines, let cmake figure out the rest
+		// Only include defines from gazelle directives
 		if len(configFile.Variables) > 0 {
-			essentialDefines := make(map[string]string)
-			for k, v := range configFile.Variables {
-				// Only include non-cmake internal variables
-				if !strings.HasPrefix(k, "CMAKE_") && !strings.Contains(k, "_EXECUTABLE") && 
-				   !strings.Contains(k, "_NOTFOUND") && k != "CC_HAS_TAUT_WARNING" {
-					essentialDefines[k] = v
-				}
-			}
-			if len(essentialDefines) > 0 {
-				r.SetAttr("defines", essentialDefines)
-			}
+			r.SetAttr("defines", configFile.Variables)
 		}
 		
 		// Store the output file name for reference by other rules
@@ -437,12 +427,25 @@ func (l *cmakeLang) generateRulesFromTargetsWithRepoAndAPI(args language.Generat
 		}
 		
 		r := rule.NewRule("cmake_configure_file", configFile.Name)
-		r.SetAttr("src", inputFileRef)
 		r.SetAttr("out", configFile.OutputFile)
 		
-		// Set cmake_binary to use the examples cmake target
+		// Set cmake_binary to reference the examples cmake target for examples directory
 		r.SetAttr("cmake_binary", "//:cmake")
 		
+		// Set cmake_source_dir to current directory (where CMakeLists.txt is)
+		r.SetAttr("cmake_source_dir", ".")
+		
+		// Include CMakeLists.txt and the input template file as sources
+		sourceFiles := []string{"CMakeLists.txt"}
+		if configFile.InputFile != "" && configFile.InputFile != "CMakeLists.txt" {
+			sourceFiles = append(sourceFiles, configFile.InputFile)
+		}
+		r.SetAttr("cmake_source_files", sourceFiles)
+		
+		// The generated_file_path is the output file relative to cmake build directory
+		r.SetAttr("generated_file_path", configFile.OutputFile)
+		
+		// Only include defines from gazelle directives
 		if len(configFile.Variables) > 0 {
 			r.SetAttr("defines", configFile.Variables)
 		}

@@ -217,19 +217,35 @@ func generateRulesFromCMakeFile(args language.GenerateArgs, cmakeFilePath string
 					Variables:  make(map[string]string),
 				}
 				
-				// Copy current variables to this configure file
-				for k, v := range variables {
+				// Only include defines from gazelle directives (not variables discovered by parsing)
+				for k, v := range cfg.CMakeDefines {
 					configFile.Variables[k] = v
 				}
 				
-				// Add default CMake variables
-				configFile.Variables["PROJECT_NAME"] = "project" // Default project name
+				// Add essential CMake variables needed for path resolution
 				configFile.Variables["CMAKE_CURRENT_SOURCE_DIR"] = "."
 				
 				// Generate cmake_configure_file rule
 				r := rule.NewRule("cmake_configure_file", configFile.Name)
-				r.SetAttr("src", configFile.InputFile)
 				r.SetAttr("out", configFile.OutputFile)
+				
+				// Set cmake_binary to reference the examples cmake target for examples directory
+				r.SetAttr("cmake_binary", "//:cmake")
+				
+				// Set cmake_source_dir to current directory (where CMakeLists.txt is)
+				r.SetAttr("cmake_source_dir", ".")
+				
+				// Include CMakeLists.txt and the input template file as sources
+				sourceFiles := []string{"CMakeLists.txt"}
+				if configFile.InputFile != "" && configFile.InputFile != "CMakeLists.txt" {
+					sourceFiles = append(sourceFiles, configFile.InputFile)
+				}
+				r.SetAttr("cmake_source_files", sourceFiles)
+				
+				// The generated_file_path is the output file relative to cmake build directory
+				r.SetAttr("generated_file_path", configFile.OutputFile)
+				
+				// Only include defines from gazelle directives
 				if len(configFile.Variables) > 0 {
 					r.SetAttr("defines", configFile.Variables)
 				}
