@@ -397,7 +397,11 @@ func (l *cmakeLang) generateRulesFromTargetsWithRepoAndAPI(args language.Generat
 		// files appear in the expected directory structure (e.g.
 		// `.cmake-build/foo.h`).  This ensures include paths reported by
 		// CMake match the Bazel output location.
-		r.SetAttr("out", configFile.OutputFile)
+		outputPath := configFile.OutputFile
+		if !strings.HasPrefix(outputPath, ".cmake-build/") {
+			outputPath = ".cmake-build/" + filepath.Base(configFile.OutputFile)
+		}
+		r.SetAttr("out", outputPath)
 
 		// Bazel's rule implementation copies the file from the CMake
 		// build directory. The path inside that build directory is just
@@ -426,22 +430,22 @@ func (l *cmakeLang) generateRulesFromTargetsWithRepoAndAPI(args language.Generat
 		r.SetAttr("defines", configFile.Variables)
 
 		// Store the output file name for reference by other rules
-		r.SetPrivateAttr("cmake_configure_output", configFile.OutputFile)
+		r.SetPrivateAttr("cmake_configure_output", outputPath)
 
 		res.Gen = append(res.Gen, r)
 
 		// Store mapping from generated file path to target name for dependency resolution
 		if externalRepo != "" {
 			// For external repos, map both the full path and the repo-relative path
-			generatedFileMap["@"+externalRepo+"//:"+configFile.OutputFile] = ":" + configFile.Name
+			generatedFileMap["@"+externalRepo+"//:"+outputPath] = ":" + configFile.Name
 			generatedFileMap["@"+externalRepo+"//:.cmake-build/"+filepath.Base(configFile.OutputFile)] = ":" + configFile.Name
 		} else {
-			generatedFileMap[configFile.OutputFile] = ":" + configFile.Name
-			generatedFileMap[".cmake-build/"+filepath.Base(configFile.OutputFile)] = ":" + configFile.Name
+			generatedFileMap[outputPath] = ":" + configFile.Name
+			generatedFileMap[configFile.OutputFile] = ":" + configFile.Name // Keep original mapping for compatibility
 		}
 
 		log.Printf("Generated cmake_configure_file %s in %s: %s -> %s with defines: %v",
-			r.Name(), args.Rel, inputFileRef, configFile.OutputFile, configFile.Variables)
+			r.Name(), args.Rel, inputFileRef, outputPath, configFile.Variables)
 	}
 
 	// Create a map of target names for quick lookup to identify local targets
@@ -519,16 +523,10 @@ func (l *cmakeLang) generateRulesFromTargetsWithRepoAndAPI(args language.Generat
 		// Handle include directories
 		var includes []string
 		
-		// Add current directory to includes if there are generated headers
+		// Add .cmake-build directory to includes if there are generated headers
 		// This allows generated files in the current package to be found
 		if len(generatedHdrs) > 0 {
-			// For external repositories, we need to use the relative path from workspace root
-			// instead of "." because the external sources need to find files in the Bazel package
-			if externalRepo != "" {
-				includes = append(includes, args.Rel)
-			} else {
-				includes = append(includes, ".")
-			}
+			includes = append(includes, ".cmake-build")
 		}
 		
 		if len(cmTarget.IncludeDirectories) > 0 {
