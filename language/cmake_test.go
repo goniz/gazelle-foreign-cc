@@ -46,7 +46,7 @@ func TestExternalRepoPathGeneration(t *testing.T) {
 		RepoRoot: "/test/workspace",
 		Exts:     make(map[string]interface{}),
 	}
-	c.Exts["cmake"] = gazelle.NewCMakeConfig()
+	c.Exts["cmake"] = common.NewCMakeConfig()
 	
 	args := language.GenerateArgs{
 		Config: c,
@@ -99,7 +99,7 @@ func TestFindExternalRepoSimplified(t *testing.T) {
 		RepoRoot: "/test/workspace",
 		Exts:     make(map[string]interface{}),
 	}
-	c.Exts["cmake"] = gazelle.NewCMakeConfig()
+	c.Exts["cmake"] = common.NewCMakeConfig()
 	
 	args := language.GenerateArgs{
 		Config: c,
@@ -241,7 +241,7 @@ func TestCMakeIncludeDirectoriesGenerationCore(t *testing.T) {
 		RepoRoot: "/test/workspace",
 		Exts:     make(map[string]interface{}),
 	}
-	c.Exts["cmake"] = gazelle.NewCMakeConfig()
+	c.Exts["cmake"] = common.NewCMakeConfig()
 	
 	args := language.GenerateArgs{
 		Config: c,
@@ -342,7 +342,7 @@ func TestCMakeIncludeDirectoriesExternalRepoCore(t *testing.T) {
 		RepoRoot: "/test/workspace",
 		Exts:     make(map[string]interface{}),
 	}
-	c.Exts["cmake"] = gazelle.NewCMakeConfig()
+	c.Exts["cmake"] = common.NewCMakeConfig()
 	
 	args := language.GenerateArgs{
 		Config: c,

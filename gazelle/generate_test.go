@@ -8,6 +8,7 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/goniz/gazelle-foreign-cc/common"
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/language"
 	"github.com/bazelbuild/bazel-gazelle/rule"
@@ -47,7 +48,7 @@ func createMockGenerateArgs(t *testing.T, relDir string, files []string) languag
 	// This ensures that GetCMakeConfig(c) doesn't panic or return nil if c.Exts["cmake"] is not set.
 	// You might need to register it or manually set it depending on your GetCMakeConfig implementation.
 	// Assuming GetCMakeConfig initializes if not present or you have a public constructor/initializer:
-	_ = GetCMakeConfig(c) // Ensures c.Exts["cmake"] is populated.
+	_ = common.GetCMakeConfig(c) // Ensures c.Exts["cmake"] is populated.
 
 	return language.GenerateArgs{
 		Config:       c,
