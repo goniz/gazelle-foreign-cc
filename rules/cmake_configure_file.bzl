@@ -5,7 +5,7 @@ def _cmake_configure_file_impl(ctx):
     output_file = ctx.outputs.out
     cmake_binary = ctx.executable.cmake_binary
     cmake_source_dir = ctx.attr.cmake_source_dir
-    
+
     # Validate inputs
     if not output_file:
         fail("out attribute is required")
@@ -13,51 +13,55 @@ def _cmake_configure_file_impl(ctx):
         fail("cmake_binary attribute is required")
     if not cmake_source_dir:
         fail("cmake_source_dir attribute is required")
-    
+
     # Create a temporary build directory
     build_dir = ctx.actions.declare_directory(ctx.label.name + "_cmake_build")
-    
+
     # Build cmake -D arguments for variable definitions if any
     define_args = []
+
     # Add CMAKE_CURRENT_SOURCE_DIR internally
-    define_args.append('-DCMAKE_CURRENT_SOURCE_DIR=%s' % cmake_source_dir)
+    define_args.append("-DCMAKE_CURRENT_SOURCE_DIR=%s" % cmake_source_dir)
     for key, value in ctx.attr.defines.items():
         # Skip CMAKE_CURRENT_SOURCE_DIR if user provided it - we set it automatically
         if key != "CMAKE_CURRENT_SOURCE_DIR":
-            define_args.append('-D%s=%s' % (key, value))
-    
+            define_args.append("-D%s=%s" % (key, value))
+
     # Get source files and derive the actual source directory
     inputs = []
     actual_source_dir = "."
     if ctx.attr.cmake_source_files:
         inputs.extend(ctx.files.cmake_source_files)
+
         # Find CMakeLists.txt in the inputs to determine the source directory
         for file in ctx.files.cmake_source_files:
             if file.basename == "CMakeLists.txt":
                 # Use the directory containing CMakeLists.txt
                 actual_source_dir = file.dirname
                 break
-    
+
     # Run cmake configure to generate files
     ctx.actions.run(
         inputs = inputs,
         outputs = [build_dir],
         executable = cmake_binary,
         arguments = [
-            "-S", actual_source_dir,
-            "-B", build_dir.path,
+            "-S",
+            actual_source_dir,
+            "-B",
+            build_dir.path,
         ] + define_args,
         mnemonic = "CMakeConfigure",
         progress_message = "Running cmake configure",
         use_default_shell_env = True,
     )
-    
+
     # Copy the generated file from the cmake build directory
     generated_file_path = ctx.attr.generated_file_path
     if not generated_file_path:
         # Default to the output file short path if not specified
         generated_file_path = output_file.short_path
-    
+
     # Use a simple shell command to copy the file
     ctx.actions.run_shell(
         inputs = [build_dir],
@@ -79,7 +83,7 @@ def _cmake_configure_file_impl(ctx):
         progress_message = "Copying cmake generated file",
         use_default_shell_env = True,
     )
-    
+
     return [DefaultInfo(files = depset([output_file]))]
 
 cmake_configure_file = rule(

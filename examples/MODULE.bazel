@@ -19,10 +19,11 @@ bazel_dep(name = "bazel_skylib", version = "1.7.1")
 
 # Register libzmq repository using use_repo_rule
 http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+
 http_archive(
     name = "libzmq",
-    url = "https://github.com/zeromq/libzmq/releases/download/v4.3.5/zeromq-4.3.5.tar.gz",
+    build_file = "@gazelle-foreign-cc//:external_repo_buildfile.BUILD",
     sha256 = "6653ef5910f17954861fe72332e68b03ca6e4d9c7160eb3a8de5a5a913bfab43",
     strip_prefix = "zeromq-4.3.5",
-    build_file = "@gazelle-foreign-cc//:external_repo_buildfile.BUILD",
+    url = "https://github.com/zeromq/libzmq/releases/download/v4.3.5/zeromq-4.3.5.tar.gz",
 )
