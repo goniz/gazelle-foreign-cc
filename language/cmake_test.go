@@ -5,7 +5,6 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/goniz/gazelle-foreign-cc/gazelle"
 	"github.com/goniz/gazelle-foreign-cc/common"
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/language"
@@ -279,7 +278,7 @@ func TestCMakeIncludeDirectoriesGenerationCore(t *testing.T) {
 	}
 	
 	// Call the method under test
-	result := lang.generateRulesFromTargetsWithRepoAndAPI(args, cmakeTargets, "", nil)
+	result := lang.generateRulesFromTargetsWithRepoAndAPI(args, cmakeTargets, "", nil, map[string]string{})
 	
 	// Verify that cmake_include_directories targets were generated
 	var includeRules []*rule.Rule
@@ -364,7 +363,7 @@ func TestCMakeIncludeDirectoriesExternalRepoCore(t *testing.T) {
 	}
 	
 	// Call with external repo
-	result := lang.generateRulesFromTargetsWithRepoAndAPI(args, cmakeTargets, "libzmq", nil)
+	result := lang.generateRulesFromTargetsWithRepoAndAPI(args, cmakeTargets, "libzmq", nil, map[string]string{})
 	
 	// Find the cmake_include_directories rule
 	var includeRule *rule.Rule
