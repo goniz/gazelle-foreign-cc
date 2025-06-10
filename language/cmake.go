@@ -517,34 +517,45 @@ func (l *cmakeLang) generateRulesFromTargetsWithRepoAndAPI(args language.Generat
 		}
 
 		// Handle include directories
+		var includes []string
+		
+		// Add current directory to includes if there are generated headers
+		// This allows generated files in the current package to be found
+		if len(generatedHdrs) > 0 {
+			// For external repositories, we need to use the relative path from workspace root
+			// instead of "." because the external sources need to find files in the Bazel package
+			if externalRepo != "" {
+				includes = append(includes, args.Rel)
+			} else {
+				includes = append(includes, ".")
+			}
+		}
+		
 		if len(cmTarget.IncludeDirectories) > 0 {
 			if externalRepo != "" {
 				// For external repositories, keep the include paths
 				// exactly as reported by CMake. They are relative
 				// to the package where this BUILD file lives, so
 				// no repository prefix should be added.
-				var includes []string
 				for _, dir := range cmTarget.IncludeDirectories {
 					if !filepath.IsAbs(dir) && !strings.HasPrefix(dir, "..") {
 						includes = append(includes, dir)
 					}
 				}
-				if len(includes) > 0 {
-					r.SetAttr("includes", includes)
-				}
 			} else {
 				// For local repositories, use includes attribute as before
-				var includes []string
 				for _, dir := range cmTarget.IncludeDirectories {
 					// Only include relative paths that don't go outside the project
 					if !filepath.IsAbs(dir) && !strings.HasPrefix(dir, "..") {
 						includes = append(includes, dir)
 					}
 				}
-				if len(includes) > 0 {
-					r.SetAttr("includes", includes)
-				}
 			}
+		}
+		
+		// Set includes attribute if we have any include directories
+		if len(includes) > 0 {
+			r.SetAttr("includes", includes)
 		}
 
 		// Generate deps attribute for locally linked libraries

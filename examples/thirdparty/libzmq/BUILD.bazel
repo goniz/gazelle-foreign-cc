@@ -9,7 +9,7 @@ package(default_visibility = ["//visibility:public"])
 
 cmake_configure_file(
     name = "platform_hpp",
-    out = "platform.hpp",
+    out = ".cmake-build/platform.hpp",
     cmake_binary = "//:cmake",
     cmake_source_dir = ".",
     cmake_source_files = ["@libzmq//:srcs"],
@@ -293,7 +293,8 @@ cc_library(
         "@libzmq//:src/zmtp_engine.hpp",
     ],
     includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//include",
+        ".cmake-build",
+        "include",
+        "thirdparty/libzmq",
     ],
 )
