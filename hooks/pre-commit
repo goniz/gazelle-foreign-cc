@@ -1,5 +1,11 @@
 #!/bin/bash
-# Pre-commit hook script that runs buildifier with -r flag on all files
+#
+# Git pre-commit hook that runs buildifier to format Bazel files
+# This hook runs buildifier with -r flag on all files and stages changes
+#
+# To install this hook, copy it to .git/hooks/pre-commit and make it executable:
+#   cp hooks/pre-commit .git/hooks/pre-commit
+#   chmod +x .git/hooks/pre-commit
 
 # Exit on any error  
 set -e
