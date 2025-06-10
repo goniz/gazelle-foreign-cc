@@ -38,5 +38,5 @@ jobs:
         uses: anthropics/claude-code-action@beta
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          allowed_tools: "Bash(npm),Bash(bazel)"
+          allowed_tools: "Bash(npm),Bash(bazel),Bash"
           timeout_minutes: "60"
