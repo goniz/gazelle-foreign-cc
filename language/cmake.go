@@ -147,22 +147,33 @@ func (l *cmakeLang) Loads() []rule.LoadInfo {
 func (l *cmakeLang) GenerateRules(args language.GenerateArgs) language.GenerateResult {
 	cfg := common.GetCMakeConfig(args.Config)
 
-	// Check for cmake_source directive in the current BUILD file
+	// Check for cmake_source directive and collect cmake_define directives from the current BUILD file
 	var cmakeSource string
+	packageDefines := make(map[string]string)
+	
 	if args.File != nil {
 		for _, directive := range args.File.Directives {
 			if directive.Key == "cmake_source" {
 				cmakeSource = directive.Value
 				log.Printf("Found cmake_source directive: %s in package %s", cmakeSource, args.Rel)
-				break
+			} else if directive.Key == "cmake_define" {
+				// Parse cmake_define directive in format "KEY VALUE"
+				parts := strings.Fields(directive.Value)
+				if len(parts) != 2 {
+					log.Printf("Invalid cmake_define directive format '%s' in %s. Expected format: 'KEY VALUE'", directive.Value, args.Rel)
+					continue
+				}
+				key, value := parts[0], parts[1]
+				packageDefines[key] = value
+				log.Printf("Found cmake_define directive %s=%s in package %s", key, value, args.Rel)
 			}
 		}
 	}
 
 	// If we have a cmake_source directive pointing to external sources, process that
 	if cmakeSource != "" {
-		log.Printf("cmakeLang.GenerateRules: Processing cmake_source directive %s for package %s", cmakeSource, args.Rel)
-		return l.generateRulesFromExternalSource(args, cmakeSource)
+		log.Printf("cmakeLang.GenerateRules: Processing cmake_source directive %s for package %s with %d defines", cmakeSource, args.Rel, len(packageDefines))
+		return l.generateRulesFromExternalSource(args, cmakeSource, packageDefines)
 	}
 
 	// Otherwise, look for local CMakeLists.txt
@@ -177,20 +188,20 @@ func (l *cmakeLang) GenerateRules(args language.GenerateArgs) language.GenerateR
 
 	// Try to use CMake File API first
 	buildDir := filepath.Join(args.Dir, ".cmake-build")
-	api := NewCMakeFileAPI(args.Dir, buildDir, cfg.CMakeExecutable, cfg.CMakeDefines)
+	api := NewCMakeFileAPI(args.Dir, buildDir, cfg.CMakeExecutable, packageDefines)
 
 	cmakeTargets, err := api.GenerateFromAPI(args.Rel)
 	if err != nil {
 		log.Printf("CMake File API failed for %s: %v. Falling back to regex parsing.", args.Rel, err)
 		// Fallback to regex-based parsing using the existing function from gazelle package
-		return common.GenerateRules(args)
+		return common.GenerateRulesWithDefines(args, packageDefines)
 	}
 
-	return l.generateRulesFromTargets(args, cmakeTargets)
+	return l.generateRulesFromTargets(args, cmakeTargets, packageDefines)
 }
 
 // generateRulesFromExternalSource handles the cmake_source directive pointing to external sources
-func (l *cmakeLang) generateRulesFromExternalSource(args language.GenerateArgs, sourceLabel string) language.GenerateResult {
+func (l *cmakeLang) generateRulesFromExternalSource(args language.GenerateArgs, sourceLabel string, packageDefines map[string]string) language.GenerateResult {
 	log.Printf("generateRulesFromExternalSource: Processing external source %s", sourceLabel)
 
 	if !strings.HasPrefix(sourceLabel, "@") {
@@ -232,7 +243,7 @@ func (l *cmakeLang) generateRulesFromExternalSource(args language.GenerateArgs, 
 	// Process the external CMake project
 	cfg := common.GetCMakeConfig(args.Config)
 	buildDir := filepath.Join(externalRepoPath, ".cmake-build")
-	api := NewCMakeFileAPI(externalRepoPath, buildDir, cfg.CMakeExecutable, cfg.CMakeDefines)
+	api := NewCMakeFileAPI(externalRepoPath, buildDir, cfg.CMakeExecutable, packageDefines)
 
 	cmakeTargets, err := api.GenerateFromAPI(args.Rel)
 	if err != nil {
@@ -240,7 +251,7 @@ func (l *cmakeLang) generateRulesFromExternalSource(args language.GenerateArgs, 
 		// Create a modified args for the external directory
 		externalArgs := args
 		externalArgs.Dir = externalRepoPath
-		return common.GenerateRules(externalArgs)
+		return common.GenerateRulesWithDefines(externalArgs, packageDefines)
 	}
 
 	log.Printf("Successfully parsed %d CMake targets from external repository %s", len(cmakeTargets), repoName)
@@ -249,7 +260,7 @@ func (l *cmakeLang) generateRulesFromExternalSource(args language.GenerateArgs, 
 	// This is needed so that source file existence checks work correctly
 	externalArgs := args
 	externalArgs.Dir = externalRepoPath
-	return l.generateRulesFromTargetsWithRepoAndAPI(externalArgs, cmakeTargets, repoName, api)
+	return l.generateRulesFromTargetsWithRepoAndAPI(externalArgs, cmakeTargets, repoName, api, packageDefines)
 }
 
 // findExternalRepo attempts to locate an external repository
@@ -312,9 +323,9 @@ func (l *cmakeLang) findRepoViaRunfiles(repoName string) string {
 }
 
 // generateRulesFromTargets converts CMakeTarget objects to Bazel rules
-func (l *cmakeLang) generateRulesFromTargets(args language.GenerateArgs, cmakeTargets []*common.CMakeTarget) language.GenerateResult {
+func (l *cmakeLang) generateRulesFromTargets(args language.GenerateArgs, cmakeTargets []*common.CMakeTarget, packageDefines map[string]string) language.GenerateResult {
 	// Generate rules from CMake targets (this function handles both cc_* and cmake_configure_file rules)
-	result := l.generateRulesFromTargetsWithRepoAndAPI(args, cmakeTargets, "", nil)
+	result := l.generateRulesFromTargetsWithRepoAndAPI(args, cmakeTargets, "", nil, packageDefines)
 
 	// The configure_file logic is handled in generateRulesFromTargetsWithRepoAndAPI
 	// No additional processing needed here
@@ -333,7 +344,7 @@ func fileExistsInRegularFiles(filename string, regularFiles []string) bool {
 }
 
 // generateRulesFromTargetsWithRepoAndAPI converts CMakeTarget objects to Bazel rules, with optional external repository context and CMakeFileAPI
-func (l *cmakeLang) generateRulesFromTargetsWithRepoAndAPI(args language.GenerateArgs, cmakeTargets []*common.CMakeTarget, externalRepo string, api *CMakeFileAPI) language.GenerateResult {
+func (l *cmakeLang) generateRulesFromTargetsWithRepoAndAPI(args language.GenerateArgs, cmakeTargets []*common.CMakeTarget, externalRepo string, api *CMakeFileAPI, packageDefines map[string]string) language.GenerateResult {
 	res := language.GenerateResult{}
 
 	// Additionally, detect configure_file commands using CMake File API approach
@@ -350,7 +361,7 @@ func (l *cmakeLang) generateRulesFromTargetsWithRepoAndAPI(args language.Generat
 		// Create a new API instance for local directories
 		cfg := common.GetCMakeConfig(args.Config)
 		buildDir := filepath.Join(args.Dir, ".cmake-build")
-		localAPI := NewCMakeFileAPI(args.Dir, buildDir, cfg.CMakeExecutable, cfg.CMakeDefines)
+		localAPI := NewCMakeFileAPI(args.Dir, buildDir, cfg.CMakeExecutable, packageDefines)
 		var err error
 		configureFiles, err = localAPI.DetectConfigureFileCommands()
 		if err != nil {
