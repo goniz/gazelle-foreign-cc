@@ -1,5 +1,5 @@
-load("@gazelle-foreign-cc//rules:cmake_include_directories.bzl", "cmake_include_directories")
 load("@gazelle-foreign-cc//rules:cmake_configure_file.bzl", "cmake_configure_file")
+load("@gazelle-foreign-cc//rules:cmake_include_directories.bzl", "cmake_include_directories")
 load("@rules_cc//cc:defs.bzl", "cc_library")
 
 # gazelle:cmake_source @libzmq

@@ -2,6 +2,7 @@ package language
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -114,6 +115,11 @@ func (l *cmakeLang) Kinds() map[string]rule.KindInfo {
 			MergeableAttrs: map[string]bool{"defines": true},
 			ResolveAttrs:   map[string]bool{},
 		},
+		"cmake_include_directories": {
+			NonEmptyAttrs:  map[string]bool{"srcs": true},
+			MergeableAttrs: map[string]bool{"includes": true, "additional_hdrs": true, "defines": true},
+			ResolveAttrs:   map[string]bool{},
+		},
 	}
 }
 
@@ -127,6 +133,10 @@ func (l *cmakeLang) Loads() []rule.LoadInfo {
 		{
 			Name:    "@gazelle-foreign-cc//rules:cmake_configure_file.bzl",
 			Symbols: []string{"cmake_configure_file"},
+		},
+		{
+			Name:    "@gazelle-foreign-cc//rules:cmake_include_directories.bzl",
+			Symbols: []string{"cmake_include_directories"},
 		},
 	}
 }
@@ -456,6 +466,140 @@ func (l *cmakeLang) generateRulesFromTargetsWithRepoAndAPI(args language.Generat
 		targetNames[cmTarget.Name] = true
 	}
 
+	// Collect unique include directory sets and generate cmake_include_directories targets
+	type includeSet struct {
+		includes []string
+		targets  []string // targets that use this include set
+	}
+	
+	includeSetMap := make(map[string]*includeSet) // key is stringified include set
+	includeTargetMap := make(map[string]string)    // maps target name to include target name
+	
+	// Helper function to normalize includes for consistent comparison
+	normalizeIncludes := func(dirs []string, hasGeneratedDeps bool, isExternal bool) []string {
+		var normalized []string
+		
+		// For external repositories, don't add .cmake-build to includes since 
+		// cmake_configure_file rules provide the correct include path through CcInfo
+		// For local repositories, add .cmake-build directory to includes if there are generated deps
+		if hasGeneratedDeps && !isExternal {
+			normalized = append(normalized, ".cmake-build")
+		}
+		
+		if len(dirs) > 0 {
+			if isExternal {
+				// For external repositories, add repository-prefixed paths
+				// for CMake-reported include directories, but exclude .cmake-build
+				// since generated files are handled by cmake_configure_file dependencies
+				for _, dir := range dirs {
+					if !filepath.IsAbs(dir) && !strings.HasPrefix(dir, "..") && dir != ".cmake-build" && !strings.HasPrefix(dir, ".cmake-build/") {
+						normalized = append(normalized, dir) // Don't prefix here, will be handled in cmake_include_directories
+					}
+				}
+			} else {
+				// For local repositories, use includes as before
+				for _, dir := range dirs {
+					// Only include relative paths that don't go outside the project
+					if !filepath.IsAbs(dir) && !strings.HasPrefix(dir, "..") {
+						normalized = append(normalized, dir)
+					}
+				}
+			}
+		}
+		
+		return normalized
+	}
+	
+	// Collect unique include sets by examining each target
+	for _, cmTarget := range cmakeTargets {
+		// Check if this target has generated dependencies
+		hasGeneratedDeps := false
+		for _, header := range cmTarget.Headers {
+			var headerRef string
+			if externalRepo != "" {
+				headerRef = "@" + externalRepo + "//:" + header
+			} else {
+				headerRef = header
+			}
+			if _, isGenerated := generatedFileMap[headerRef]; isGenerated {
+				hasGeneratedDeps = true
+				break
+			}
+		}
+		
+		normalizedIncludes := normalizeIncludes(cmTarget.IncludeDirectories, hasGeneratedDeps, externalRepo != "")
+		
+		// Only create include targets if there are actual includes
+		if len(normalizedIncludes) > 0 {
+			includeKey := strings.Join(normalizedIncludes, ",")
+			
+			if set, exists := includeSetMap[includeKey]; exists {
+				// Add this target to the existing include set
+				set.targets = append(set.targets, cmTarget.Name)
+			} else {
+				// Create new include set
+				includeSetMap[includeKey] = &includeSet{
+					includes: normalizedIncludes,
+					targets:  []string{cmTarget.Name},
+				}
+			}
+		}
+	}
+	
+	// Generate cmake_include_directories targets
+	for i, set := range includeSetMap {
+		var includeName string
+		if externalRepo != "" {
+			// For external repositories: use repo name + "_includes"
+			if len(includeSetMap) == 1 {
+				includeName = externalRepo + "_includes"
+			} else {
+				// Multiple include sets, add suffix
+				includeName = fmt.Sprintf("%s_includes_%d", externalRepo, len(res.Gen)+1)
+			}
+		} else {
+			// For local projects: use directory name + "_includes"
+			// Get directory name from args.Rel or use "includes" as fallback
+			dirName := filepath.Base(args.Rel)
+			if dirName == "" || dirName == "." {
+				dirName = "project"
+			}
+			if len(includeSetMap) == 1 {
+				includeName = dirName + "_includes"
+			} else {
+				// Multiple include sets, add suffix
+				includeName = fmt.Sprintf("%s_includes_%d", dirName, len(res.Gen)+1)
+			}
+		}
+		
+		r := rule.NewRule("cmake_include_directories", includeName)
+		
+		// Set srcs attribute
+		if externalRepo != "" {
+			r.SetAttr("srcs", "@"+externalRepo+"//:srcs")
+		} else {
+			// For local projects, we need to create a filegroup or reference appropriate sources
+			// For now, let's use a glob pattern that matches typical source structures
+			r.SetAttr("srcs", "glob([\"**/*\"])")
+		}
+		
+		// Set includes attribute
+		r.SetAttr("includes", set.includes)
+		
+		res.Gen = append(res.Gen, r)
+		
+		// Map all targets in this set to this include target
+		for _, targetName := range set.targets {
+			includeTargetMap[targetName] = ":" + includeName
+		}
+		
+		log.Printf("Generated cmake_include_directories %s with includes: %v for targets: %v", 
+			includeName, set.includes, set.targets)
+		
+		// Avoid unused variable error
+		_ = i
+	}
+
 	for _, cmTarget := range cmakeTargets {
 		var r *rule.Rule
 		if cmTarget.Type == "library" {
@@ -519,43 +663,7 @@ func (l *cmakeLang) generateRulesFromTargetsWithRepoAndAPI(args language.Generat
 			r.SetAttr("hdrs", finalHdrs)
 		}
 
-		// Handle include directories
-		var includes []string
-		
-		// For external repositories, don't add .cmake-build to includes since 
-		// cmake_configure_file rules provide the correct include path through CcInfo
-		// For local repositories, add .cmake-build directory to includes if there are generated deps
-		if len(generatedDeps) > 0 && externalRepo == "" {
-			includes = append(includes, ".cmake-build")
-		}
-		
-		if len(cmTarget.IncludeDirectories) > 0 {
-			if externalRepo != "" {
-				// For external repositories, add repository-prefixed paths
-				// for CMake-reported include directories, but exclude .cmake-build
-				// since generated files are handled by cmake_configure_file dependencies
-				for _, dir := range cmTarget.IncludeDirectories {
-					if !filepath.IsAbs(dir) && !strings.HasPrefix(dir, "..") && dir != ".cmake-build" && !strings.HasPrefix(dir, ".cmake-build/") {
-						includes = append(includes, "@"+externalRepo+"//"+dir)
-					}
-				}
-			} else {
-				// For local repositories, use includes attribute as before
-				for _, dir := range cmTarget.IncludeDirectories {
-					// Only include relative paths that don't go outside the project
-					if !filepath.IsAbs(dir) && !strings.HasPrefix(dir, "..") {
-						includes = append(includes, dir)
-					}
-				}
-			}
-		}
-		
-		// Set includes attribute if we have any include directories
-		if len(includes) > 0 {
-			r.SetAttr("includes", includes)
-		}
-
-		// Generate deps attribute for locally linked libraries and cmake_configure_file targets
+		// Generate deps attribute for locally linked libraries, cmake_configure_file targets, and include targets
 		var deps []string
 		for _, linkedLib := range cmTarget.LinkedLibraries {
 			// Check if the linked library matches another target in this directory
@@ -566,6 +674,11 @@ func (l *cmakeLang) generateRulesFromTargetsWithRepoAndAPI(args language.Generat
 		}
 		// Add cmake_configure_file targets as dependencies
 		deps = append(deps, generatedDeps...)
+		
+		// Add cmake_include_directories target as dependency if this target has includes
+		if includeTarget, hasIncludes := includeTargetMap[cmTarget.Name]; hasIncludes {
+			deps = append(deps, includeTarget)
+		}
 		
 		if len(deps) > 0 {
 			r.SetAttr("deps", deps)
