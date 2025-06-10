@@ -15,6 +15,11 @@ runs:
       with:
         bazelrc: ${{ inputs.bazelrc }}
 
+    - name: Install Buildifier
+      run: |
+        sudo npm install -g @bazel/buildifier
+      shell: bash
+
     - name: Install CMake
       run: |
         sudo apt-get update
