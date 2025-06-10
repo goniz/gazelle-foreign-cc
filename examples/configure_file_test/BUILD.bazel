@@ -1,0 +1,24 @@
+load("@gazelle-foreign-cc//rules:cmake_configure_file.bzl", "cmake_configure_file")
+load("@rules_cc//cc:defs.bzl", "cc_binary")
+
+cmake_configure_file(
+    name = "config_h",
+    out = "config.h",
+    cmake_binary = "//:cmake",
+    cmake_source_dir = "configure_file_test",
+    cmake_source_files = [
+        "CMakeLists.txt",
+        "config.h.in",
+    ],
+    defines = {
+        "MY_VERSION": "1.0.0",
+        "FEATURE_ENABLED": "1",
+    },
+    generated_file_path = "config.h",
+)
+
+cc_binary(
+    name = "test_config",
+    srcs = ["main.cpp"],
+    deps = [":config_h"],
+)

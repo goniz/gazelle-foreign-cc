@@ -2,15 +2,17 @@
 
 def _create_compilation_context(ctx, output_file):
     """Create a compilation context for the generated header file."""
-    # The generated file will be available in its package directory
-    # For a target //thirdparty/libzmq:platform_hpp, the include dir should be thirdparty/libzmq
-    package_path = ctx.label.package
-    
+
+    # The generated file will be available via the standard Bazel genfiles mechanism
+    # Since output_file.dirname gives us the genfiles path for this package,
+    # we can use that as the include directory
+    genfiles_include = output_file.dirname
+
     compilation_context = cc_common.create_compilation_context(
         headers = depset([output_file]),
-        includes = depset([package_path]) if package_path else depset(),
+        includes = depset([genfiles_include]),
     )
-    
+
     return compilation_context
 
 def _cmake_configure_file_impl(ctx):
@@ -99,7 +101,7 @@ def _cmake_configure_file_impl(ctx):
 
     # Create compilation context for cc targets that depend on this
     compilation_context = _create_compilation_context(ctx, output_file)
-    
+
     return [
         DefaultInfo(files = depset([output_file])),
         CcInfo(compilation_context = compilation_context),
