@@ -1,14 +1,11 @@
 # gazelle:cmake_source @librdkafka
-
-"""
-				"RDKAFKA_BUILD_STATIC": "ON",
-        "RDKAFKA_BUILD_TESTS": "OFF",
-        "RDKAFKA_BUILD_EXAMPLES": "OFF",
-        "WITH_ZSTD": "OFF",
-        "WITH_SSL": "ON",
-        "WITH_SASL_SCRAM": "ON",
-        "WITH_SASL_OAUTHBEARER": "ON",
-        "WITH_SASL": "OFF",
-        "ENABLE_LZ4_EXT": "OFF",
-        "WITH_LIBDL": "OFF",
-"""
+# gazelle:cmake_define RDKAFKA_BUILD_STATIC ON
+# gazelle:cmake_define RDKAFKA_BUILD_TESTS OFF
+# gazelle:cmake_define RDKAFKA_BUILD_EXAMPLES OFF
+# gazelle:cmake_define WITH_ZSTD OFF
+# gazelle:cmake_define WITH_SSL OFF
+# gazelle:cmake_define WITH_SASL_SCRAM ON
+# gazelle:cmake_define WITH_SASL_OAUTHBEARER ON
+# gazelle:cmake_define WITH_SASL OFF
+# gazelle:cmake_define ENABLE_LZ4_EXT OFF
+# gazelle:cmake_define WITH_LIBDL OFF

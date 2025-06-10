@@ -27,3 +27,11 @@ http_archive(
     strip_prefix = "zeromq-4.3.5",
     url = "https://github.com/zeromq/libzmq/releases/download/v4.3.5/zeromq-4.3.5.tar.gz",
 )
+
+http_archive(
+        name = "librdkafka",
+        url = "https://github.com/edenhill/librdkafka/archive/v1.8.2.tar.gz",
+        integrity = "sha256-anR9KTp6RhO9KJfijoeRR2++Guc2HyUwqHbg/Ug0gqY=",
+        strip_prefix = "librdkafka-1.8.2",
+        build_file = "@gazelle-foreign-cc//:external_repo_buildfile.BUILD",
+    )
