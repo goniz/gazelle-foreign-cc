@@ -1,5 +1,18 @@
 """CMake configure_file rule for Bazel that runs cmake configure and copies generated files."""
 
+def _create_compilation_context(ctx, output_file):
+    """Create a compilation context for the generated header file."""
+    # The generated file will be available in its package directory
+    # For a target //thirdparty/libzmq:platform_hpp, the include dir should be thirdparty/libzmq
+    package_path = ctx.label.package
+    
+    compilation_context = cc_common.create_compilation_context(
+        headers = depset([output_file]),
+        includes = depset([package_path]) if package_path else depset(),
+    )
+    
+    return compilation_context
+
 def _cmake_configure_file_impl(ctx):
     """Implementation of cmake_configure_file rule that runs cmake configure and copies the generated file."""
     output_file = ctx.outputs.out
@@ -84,7 +97,13 @@ def _cmake_configure_file_impl(ctx):
         use_default_shell_env = True,
     )
 
-    return [DefaultInfo(files = depset([output_file]))]
+    # Create compilation context for cc targets that depend on this
+    compilation_context = _create_compilation_context(ctx, output_file)
+    
+    return [
+        DefaultInfo(files = depset([output_file])),
+        CcInfo(compilation_context = compilation_context),
+    ]
 
 cmake_configure_file = rule(
     implementation = _cmake_configure_file_impl,
