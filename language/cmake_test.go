@@ -2,9 +2,11 @@ package language
 
 import (
 	"path/filepath"
+	"reflect"
 	"testing"
 
 	"github.com/goniz/gazelle-foreign-cc/gazelle"
+	"github.com/goniz/gazelle-foreign-cc/common"
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/language"
 	"github.com/bazelbuild/bazel-gazelle/rule"
@@ -225,5 +227,175 @@ func TestCMakeEmptyDefines(t *testing.T) {
 	// Check that empty defines are handled correctly
 	if len(api.cmakeDefines) != 0 {
 		t.Errorf("Expected 0 cmake defines, got %d", len(api.cmakeDefines))
+	}
+}
+
+func TestCMakeIncludeDirectoriesGenerationCore(t *testing.T) {
+	// Test that focuses specifically on cmake_include_directories target generation
+	// without worrying about file existence
+	
+	lang := &cmakeLang{}
+	
+	// Create mock args
+	c := &config.Config{
+		RepoRoot: "/test/workspace",
+		Exts:     make(map[string]interface{}),
+	}
+	c.Exts["cmake"] = gazelle.NewCMakeConfig()
+	
+	args := language.GenerateArgs{
+		Config: c,
+		Dir:    "/test/workspace/project",
+		Rel:    "project",
+		RegularFiles: []string{}, // No files to avoid fileExistsInDir checks
+	}
+	
+	// Create mock CMake targets with include directories
+	cmakeTargets := []*common.CMakeTarget{
+		{
+			Name:                "target1",
+			Type:                "library",
+			Sources:             []string{}, // No sources to avoid fileExistsInDir checks
+			Headers:             []string{}, // No headers to avoid fileExistsInDir checks
+			IncludeDirectories:  []string{"include", "third_party/include"},
+			LinkedLibraries:     []string{},
+		},
+		{
+			Name:                "target2", 
+			Type:                "library",
+			Sources:             []string{}, // No sources to avoid fileExistsInDir checks
+			Headers:             []string{}, // No headers to avoid fileExistsInDir checks
+			IncludeDirectories:  []string{"include", "third_party/include"}, // Same as target1
+			LinkedLibraries:     []string{},
+		},
+		{
+			Name:                "target3",
+			Type:                "executable",
+			Sources:             []string{}, // No sources to avoid fileExistsInDir checks
+			Headers:             []string{}, // No headers to avoid fileExistsInDir checks
+			IncludeDirectories:  []string{"other/include"}, // Different includes
+			LinkedLibraries:     []string{"target1"},
+		},
+	}
+	
+	// Call the method under test
+	result := lang.generateRulesFromTargetsWithRepoAndAPI(args, cmakeTargets, "", nil)
+	
+	// Verify that cmake_include_directories targets were generated
+	var includeRules []*rule.Rule
+	
+	for _, r := range result.Gen {
+		if r.Kind() == "cmake_include_directories" {
+			includeRules = append(includeRules, r)
+		}
+	}
+	
+	// Should have 2 cmake_include_directories targets (one for shared includes, one for different includes)
+	if len(includeRules) != 2 {
+		t.Errorf("Expected 2 cmake_include_directories rules, got %d", len(includeRules))
+		for _, r := range includeRules {
+			t.Logf("Include rule: %s, includes: %v", r.Name(), r.AttrStrings("includes"))
+		}
+		return
+	}
+	
+	// Verify the include targets have correct attributes
+	foundSharedIncludes := false
+	foundOtherIncludes := false
+	
+	for _, r := range includeRules {
+		includes := r.AttrStrings("includes")
+		srcs := r.AttrStrings("srcs")
+		
+		// Should have srcs set to glob for local projects
+		expectedSrcs := []string{"glob([\"**/*\"])"}
+		if !reflect.DeepEqual(srcs, expectedSrcs) {
+			t.Errorf("Expected srcs %v for rule %s, got %v", expectedSrcs, r.Name(), srcs)
+		}
+		
+		// Check the include patterns
+		if reflect.DeepEqual(includes, []string{"include", "third_party/include"}) {
+			foundSharedIncludes = true
+		} else if reflect.DeepEqual(includes, []string{"other/include"}) {
+			foundOtherIncludes = true
+		} else {
+			t.Errorf("Unexpected includes for rule %s: %v", r.Name(), includes)
+		}
+	}
+	
+	if !foundSharedIncludes {
+		t.Error("Expected to find include rule with [include, third_party/include]")
+	}
+	if !foundOtherIncludes {
+		t.Error("Expected to find include rule with [other/include]")
+	}
+}
+
+func TestCMakeIncludeDirectoriesExternalRepoCore(t *testing.T) {
+	// Test cmake_include_directories generation for external repositories
+	// This test focuses on the external repo-specific logic
+	
+	lang := &cmakeLang{}
+	
+	// Create mock args
+	c := &config.Config{
+		RepoRoot: "/test/workspace",
+		Exts:     make(map[string]interface{}),
+	}
+	c.Exts["cmake"] = gazelle.NewCMakeConfig()
+	
+	args := language.GenerateArgs{
+		Config: c,
+		Dir:    "/test/workspace/external/libzmq",
+		Rel:    "thirdparty/libzmq",
+		RegularFiles: []string{}, // No files to avoid fileExistsInDir checks
+	}
+	
+	// Create mock CMake targets for external repo
+	cmakeTargets := []*common.CMakeTarget{
+		{
+			Name:                "my_lib",
+			Type:                "library",
+			Sources:             []string{}, // No sources to avoid fileExistsInDir checks
+			Headers:             []string{}, // No headers to avoid fileExistsInDir checks
+			IncludeDirectories:  []string{"include", ".cmake-build"},
+			LinkedLibraries:     []string{},
+		},
+	}
+	
+	// Call with external repo
+	result := lang.generateRulesFromTargetsWithRepoAndAPI(args, cmakeTargets, "libzmq", nil)
+	
+	// Find the cmake_include_directories rule
+	var includeRule *rule.Rule
+	
+	for _, r := range result.Gen {
+		if r.Kind() == "cmake_include_directories" {
+			includeRule = r
+		}
+	}
+	
+	// Should have exactly one cmake_include_directories rule
+	if includeRule == nil {
+		t.Fatal("Expected cmake_include_directories rule to be generated")
+	}
+	
+	// Should be named "libzmq_includes"
+	if includeRule.Name() != "libzmq_includes" {
+		t.Errorf("Expected include rule name 'libzmq_includes', got '%s'", includeRule.Name())
+	}
+	
+	// Should have srcs = ["@libzmq//:srcs"]
+	srcs := includeRule.AttrStrings("srcs")
+	expectedSrcs := []string{"@libzmq//:srcs"}
+	if !reflect.DeepEqual(srcs, expectedSrcs) {
+		t.Errorf("Expected srcs %v, got %v", expectedSrcs, srcs)
+	}
+	
+	// Should have the correct includes (with .cmake-build filtered out for external repos)
+	includes := includeRule.AttrStrings("includes")
+	expectedIncludes := []string{"include"} // .cmake-build should be filtered out for external repos
+	if !reflect.DeepEqual(includes, expectedIncludes) {
+		t.Errorf("Expected includes %v, got %v", expectedIncludes, includes)
 	}
 }
