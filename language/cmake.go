@@ -436,12 +436,14 @@ func (l *cmakeLang) generateRulesFromTargetsWithRepoAndAPI(args language.Generat
 
 		// Store mapping from generated file path to target name for dependency resolution
 		if externalRepo != "" {
-			// For external repos, map both the full path and the repo-relative path
+			// For external repos, map the generated file path
 			generatedFileMap["@"+externalRepo+"//:"+outputPath] = ":" + configFile.Name
-			generatedFileMap["@"+externalRepo+"//:.cmake-build/"+filepath.Base(configFile.OutputFile)] = ":" + configFile.Name
+			// Also map the base filename pattern that CMake might report
+			generatedFileMap["@"+externalRepo+"//:"+filepath.Base(configFile.OutputFile)] = ":" + configFile.Name
 		} else {
 			generatedFileMap[outputPath] = ":" + configFile.Name
-			generatedFileMap[configFile.OutputFile] = ":" + configFile.Name // Keep original mapping for compatibility
+			// Also map the base filename pattern that CMake might report
+			generatedFileMap[filepath.Base(configFile.OutputFile)] = ":" + configFile.Name
 		}
 
 		log.Printf("Generated cmake_configure_file %s in %s: %s -> %s with defines: %v",
@@ -523,7 +525,7 @@ func (l *cmakeLang) generateRulesFromTargetsWithRepoAndAPI(args language.Generat
 		// Handle include directories
 		var includes []string
 		
-		// Add .cmake-build directory to includes if there are generated headers
+		// Always add .cmake-build directory to includes if there are generated headers
 		// This allows generated files in the current package to be found
 		if len(generatedHdrs) > 0 {
 			includes = append(includes, ".cmake-build")
@@ -531,13 +533,11 @@ func (l *cmakeLang) generateRulesFromTargetsWithRepoAndAPI(args language.Generat
 		
 		if len(cmTarget.IncludeDirectories) > 0 {
 			if externalRepo != "" {
-				// For external repositories, keep the include paths
-				// exactly as reported by CMake. They are relative
-				// to the package where this BUILD file lives, so
-				// no repository prefix should be added.
+				// For external repositories, add repository-prefixed paths
+				// for CMake-reported include directories
 				for _, dir := range cmTarget.IncludeDirectories {
 					if !filepath.IsAbs(dir) && !strings.HasPrefix(dir, "..") {
-						includes = append(includes, dir)
+						includes = append(includes, "@"+externalRepo+"//"+dir)
 					}
 				}
 			} else {
