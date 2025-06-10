@@ -66,6 +66,7 @@ go_test(
     data = ["//testdata:all"],
     embed = [":cmake_lib"],
     deps = [
+        "//common",
         "@rules_go//go/tools/bazel",
     ],
 )
