@@ -3,3 +3,4 @@ exports_files(["external_repo_buildfile.BUILD"])
 # This is a test comment with extra spacing
 
 # Another comment
+# Test comment

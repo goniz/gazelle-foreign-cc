@@ -7,7 +7,7 @@ set -e
 # Store the list of files passed to the script
 FILES=("$@")
 
-# Run buildifier on the files
+# Run buildifier on the files (equivalent to using -r when called on individual files)
 buildifier -mode=fix "${FILES[@]}"
 
 # Add the formatted files back to the staging area

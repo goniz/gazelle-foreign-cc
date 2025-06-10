@@ -3,7 +3,8 @@ repos:
     hooks:
       - id: buildifier
         name: Format Bazel files with buildifier
-        description: Formats Bazel BUILD, *.bazel, and *.bzl files and stages changes
-        entry: ./.buildifier-hook.sh
+        description: Formats all Bazel files recursively using buildifier -r and stages changes
+        entry: ./.buildifier-recursive-hook.sh
         language: system
-        files: '(BUILD|BUILD\.bazel|WORKSPACE|WORKSPACE\.bazel|\.bzl|\.bazel)$'
+        pass_filenames: false
+        always_run: true
