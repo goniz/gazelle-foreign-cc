@@ -85,22 +85,16 @@ func TestCMakeDefineDirective(t *testing.T) {
 		},
 	}
 
-	// Configure should parse the directives
+	// Configure should parse the directives without error
 	cfg.Configure(c, "test/package", f)
 
-	// Verify the directives were parsed correctly
-	expectedDefines := map[string]string{
-		"ZMQ_BUILD_TESTS":   "OFF",
-		"WITH_PERF_TOOL":    "OFF",
-		"CMAKE_BUILD_TYPE":  "Release",
-	}
-
-	for key, expectedValue := range expectedDefines {
-		if actualValue, exists := cfg.CMakeDefines[key]; !exists {
-			t.Errorf("Expected CMake define %s to be set", key)
-		} else if actualValue != expectedValue {
-			t.Errorf("Expected CMake define %s=%s, got %s=%s", key, expectedValue, key, actualValue)
-		}
+	// Note: cmake_define directives are no longer stored globally in cfg.CMakeDefines
+	// They are processed per-package in GenerateRules to ensure proper scoping.
+	// This test verifies that Configure() processes the directives without error.
+	
+	// The CMakeDefines map should be empty since directives are processed per-package
+	if len(cfg.CMakeDefines) != 0 {
+		t.Errorf("Expected CMakeDefines to be empty (defines are processed per-package), got %v", cfg.CMakeDefines)
 	}
 }
 
@@ -119,12 +113,16 @@ func TestCMakeDefineDirectiveInvalidFormat(t *testing.T) {
 		},
 	}
 
-	// Configure should handle invalid formats gracefully
+	// Configure should handle invalid formats gracefully without panicking
 	cfg.Configure(c, "test/package", f)
 
-	// No defines should be set for invalid formats
+	// Note: cmake_define directives are no longer stored globally in cfg.CMakeDefines
+	// They are processed per-package in GenerateRules where invalid formats are handled.
+	// This test verifies that Configure() handles invalid directives without error.
+	
+	// The CMakeDefines map should be empty since directives are processed per-package
 	if len(cfg.CMakeDefines) != 0 {
-		t.Errorf("Expected no CMake defines to be set for invalid formats, got %v", cfg.CMakeDefines)
+		t.Errorf("Expected CMakeDefines to be empty (defines are processed per-package), got %v", cfg.CMakeDefines)
 	}
 }
 
