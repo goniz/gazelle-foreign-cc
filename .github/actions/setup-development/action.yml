@@ -26,6 +26,11 @@ runs:
         sudo apt-get install -y cmake
       shell: bash
 
+    - name: Install Git Hooks
+      run: |
+        ./install-hooks.sh
+      shell: bash
+
     - name: Verify setup
       run: |
         echo "Go version: $(go version)"
