@@ -1,3 +1,4 @@
+load("@gazella-foreign-cc//rules:cmake_include_directories.bzl", "cmake_include_directories")
 load("@gazelle-foreign-cc//rules:cmake_configure_file.bzl", "cmake_configure_file")
 load("@rules_cc//cc:defs.bzl", "cc_library")
 
@@ -18,6 +19,15 @@ cmake_configure_file(
         "ZMQ_BUILD_TESTS": "OFF",
     },
     generated_file_path = "platform.hpp",
+)
+
+cmake_include_directories(
+    name = "libzmq_includes",
+    srcs = "@libzmq//:srcs",
+    includes = [
+        ".cmake-build",
+        "include",
+    ],
 )
 
 cc_library(
@@ -288,9 +298,8 @@ cc_library(
         "@libzmq//:src/zap_client.hpp",
         "@libzmq//:src/zmtp_engine.hpp",
     ],
-    includes = [
-        "@libzmq//.cmake-build",
-        "@libzmq//include",
+    deps = [
+        ":libzmq_includes",
+        ":platform_hpp",
     ],
-    deps = [":platform_hpp"],
 )
