@@ -1,0 +1,10 @@
+repos:
+  - repo: local
+    hooks:
+      - id: buildifier
+        name: Format Bazel files with buildifier
+        description: Formats Bazel BUILD, *.bazel, and *.bzl files
+        entry: buildifier
+        language: system
+        files: '(BUILD|BUILD\.bazel|WORKSPACE|WORKSPACE\.bazel|\.bzl|\.bazel)$'
+        args: ["-mode=fix"]
