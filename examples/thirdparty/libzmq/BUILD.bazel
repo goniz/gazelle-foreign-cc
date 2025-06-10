@@ -24,10 +24,7 @@ cmake_configure_file(
 cmake_include_directories(
     name = "libzmq_includes",
     srcs = "@libzmq//:srcs",
-    includes = [
-        ".cmake-build",
-        "include",
-    ],
+    includes = ["include"],
 )
 
 cc_library(
@@ -139,6 +136,9 @@ cc_library(
         "@libzmq//:src/tcp_listener.cpp",
         "@libzmq//:src/thread.cpp",
         "@libzmq//:src/timers.cpp",
+        "@libzmq//:src/tipc_address.cpp",
+        "@libzmq//:src/tipc_connecter.cpp",
+        "@libzmq//:src/tipc_listener.cpp",
         "@libzmq//:src/trie.cpp",
         "@libzmq//:src/udp_address.cpp",
         "@libzmq//:src/udp_engine.cpp",
