@@ -129,9 +129,6 @@ cc_library(
         "@libzmq//:src/tcp_listener.cpp",
         "@libzmq//:src/thread.cpp",
         "@libzmq//:src/timers.cpp",
-        "@libzmq//:src/tipc_address.cpp",
-        "@libzmq//:src/tipc_connecter.cpp",
-        "@libzmq//:src/tipc_listener.cpp",
         "@libzmq//:src/trie.cpp",
         "@libzmq//:src/udp_address.cpp",
         "@libzmq//:src/udp_engine.cpp",
@@ -148,7 +145,6 @@ cc_library(
         "@libzmq//:src/zmtp_engine.cpp",
     ],
     hdrs = [
-        ":platform_hpp",
         "@libzmq//:external/sha1/sha1.h",
         "@libzmq//:src/address.hpp",
         "@libzmq//:src/array.hpp",
@@ -296,4 +292,5 @@ cc_library(
         "@libzmq//.cmake-build",
         "@libzmq//include",
     ],
+    deps = [":platform_hpp"],
 )
