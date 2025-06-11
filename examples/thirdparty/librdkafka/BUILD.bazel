@@ -37,12 +37,16 @@ cmake_configure_file(
     generated_file_path = "generated/config.h",
 )
 
-# Use a symlink approach to place config.h where it can be found by ../config.h
+# Create a custom rule that uses symlinks to create the config.h file
+# at the exact location where ../config.h would resolve to
 genrule(
-    name = "config_h_symlink",
+    name = "config_h_placement",
     srcs = [":config_h_generated"],
-    outs = ["external_librdkafka_config/config.h"],
-    cmd = "mkdir -p `dirname $@` && cp $(location :config_h_generated) $@",
+    outs = ["librdkafka_external_overlay/external/+_repo_rules+librdkafka/config.h"],
+    cmd = """
+        mkdir -p `dirname $@`
+        cp $(location :config_h_generated) $@
+    """,
 )
 
 cmake_include_directories(
@@ -63,7 +67,7 @@ cmake_include_directories(
 cc_library(
     name = "rdkafka",
     srcs = [
-        ":config_h_symlink",
+        ":config_h_placement",
         "@librdkafka//:src/crc32c.c",
         "@librdkafka//:src/lz4.c",
         "@librdkafka//:src/lz4frame.c",
@@ -134,6 +138,10 @@ cc_library(
         "@librdkafka//:src/snappy.c",
         "@librdkafka//:src/tinycthread.c",
         "@librdkafka//:src/tinycthread_extra.c",
+    ],
+    copts = [
+        # Add include path so that ../config.h can be found
+        "-Ilibrdkafka_external_overlay",
     ],
     includes = ["external_librdkafka_config"],
     deps = [":librdkafka_includes_1"],
