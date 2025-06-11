@@ -37,15 +37,62 @@ cmake_configure_file(
     generated_file_path = "generated/config.h",
 )
 
-# Create a custom rule that uses symlinks to create the config.h file
-# at the exact location where ../config.h would resolve to
+# Create a win32_config.h alternative to bypass the ../config.h include
 genrule(
-    name = "config_h_placement",
+    name = "win32_config_h",
     srcs = [":config_h_generated"],
-    outs = ["librdkafka_external_overlay/external/+_repo_rules+librdkafka/config.h"],
+    outs = ["win32_config.h"],
     cmd = """
-        mkdir -p `dirname $@`
-        cp $(location :config_h_generated) $@
+        cat > $@ << 'EOF'
+/* Generated config for Bazel build */
+#define WITHOUT_OPTIMIZATION 0
+#define ENABLE_DEVEL 0
+#define ENABLE_REFCNT_DEBUG 0
+#define HAVE_ATOMICS_32 1
+#define HAVE_ATOMICS_32_SYNC 0
+#define HAVE_ATOMICS_64 1
+#define HAVE_ATOMICS_64_SYNC 0
+#define WITH_C11THREADS 1
+#define WITH_CRC32C_HW 1
+#define WITH_PKGCONFIG 1
+#define WITH_HDRHISTOGRAM 1
+#define WITH_ZLIB 1
+#define WITH_ZSTD 0
+#define WITH_LIBDL 0
+#define WITH_PLUGINS 0
+#define WITH_SNAPPY 1
+#define WITH_SOCKEM 1
+#define WITH_SSL 0
+#define WITH_SASL 0
+#define WITH_SASL_SCRAM 1
+#define WITH_SASL_OAUTHBEARER 1
+#define WITH_SASL_CYRUS 0
+#define WITH_LZ4_EXT 0
+#define HAVE_REGEX 1
+#define HAVE_STRNDUP 1
+#define HAVE_RAND_R 1
+#define HAVE_PTHREAD_SETNAME_GNU 1
+#define HAVE_PTHREAD_SETNAME_DARWIN 1
+#define HAVE_PTHREAD_SETNAME_FREEBSD 0
+#define SOLIB_EXT ".so"
+#define BUILT_WITH "CMAKE GNU GNU PKGCONFIG HDRHISTOGRAM ZLIB C11THREADS CRC32C_HW SNAPPY SOCKEM"
+
+#if (HAVE_ATOMICS_32)
+# if (HAVE_ATOMICS_32_SYNC)
+#  define ATOMIC_OP32(OP1,OP2,PTR,VAL) __sync_ ## OP1 ## _and_ ## OP2(PTR, VAL)
+# else
+#  define ATOMIC_OP32(OP1,OP2,PTR,VAL) __atomic_ ## OP1 ## _ ## OP2(PTR, VAL, __ATOMIC_SEQ_CST)
+# endif
+#endif
+
+#if (HAVE_ATOMICS_64)
+# if (HAVE_ATOMICS_64_SYNC)
+#  define ATOMIC_OP64(OP1,OP2,PTR,VAL) __sync_ ## OP1 ## _and_ ## OP2(PTR, VAL)
+# else
+#  define ATOMIC_OP64(OP1,OP2,PTR,VAL) __atomic_ ## OP1 ## _ ## OP2(PTR, VAL, __ATOMIC_SEQ_CST)
+# endif
+#endif
+EOF
     """,
 )
 
@@ -67,7 +114,7 @@ cmake_include_directories(
 cc_library(
     name = "rdkafka",
     srcs = [
-        ":config_h_placement",
+        ":win32_config_h",
         "@librdkafka//:src/crc32c.c",
         "@librdkafka//:src/lz4.c",
         "@librdkafka//:src/lz4frame.c",
@@ -140,8 +187,10 @@ cc_library(
         "@librdkafka//:src/tinycthread_extra.c",
     ],
     copts = [
-        # Add include path so that ../config.h can be found
-        "-Ilibrdkafka_external_overlay",
+        # Fake being on Windows to use win32_config.h instead of ../config.h
+        "-D_WIN32",
+        # Add include path to find our win32_config.h
+        "-Ithirdparty/librdkafka",
     ],
     includes = ["external_librdkafka_config"],
     deps = [":librdkafka_includes_1"],
