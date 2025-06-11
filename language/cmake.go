@@ -587,11 +587,11 @@ func (l *cmakeLang) generateRulesFromTargetsWithRepoAndAPI(args language.Generat
 		
 		// Set srcs attribute
 		if externalRepo != "" {
-			r.SetAttr("srcs", []string{"@"+externalRepo+"//:srcs"})
+			r.SetAttr("srcs", "@"+externalRepo+"//:srcs")
 		} else {
 			// For local projects, we need to create a filegroup or reference appropriate sources
 			// For now, let's use a glob pattern that matches typical source structures
-			r.SetAttr("srcs", []string{"glob([\"**/*\"])"})
+			r.SetAttr("srcs", "glob([\"**/*\"])")
 		}
 		
 		// Set includes attribute

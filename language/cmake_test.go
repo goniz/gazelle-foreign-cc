@@ -304,11 +304,11 @@ func TestCMakeIncludeDirectoriesGenerationCore(t *testing.T) {
 	
 	for _, r := range includeRules {
 		includes := r.AttrStrings("includes")
-		srcs := r.AttrStrings("srcs")
+		srcs := r.AttrString("srcs")
 		
 		// Should have srcs set to glob for local projects
-		expectedSrcs := []string{"glob([\"**/*\"])"}
-		if !reflect.DeepEqual(srcs, expectedSrcs) {
+		expectedSrcs := "glob([\"**/*\"])"
+		if srcs != expectedSrcs {
 			t.Errorf("Expected srcs %v for rule %s, got %v", expectedSrcs, r.Name(), srcs)
 		}
 		
@@ -384,10 +384,10 @@ func TestCMakeIncludeDirectoriesExternalRepoCore(t *testing.T) {
 		t.Errorf("Expected include rule name 'libzmq_includes', got '%s'", includeRule.Name())
 	}
 	
-	// Should have srcs = ["@libzmq//:srcs"]
-	srcs := includeRule.AttrStrings("srcs")
-	expectedSrcs := []string{"@libzmq//:srcs"}
-	if !reflect.DeepEqual(srcs, expectedSrcs) {
+	// Should have srcs = "@libzmq//:srcs"
+	srcs := includeRule.AttrString("srcs")
+	expectedSrcs := "@libzmq//:srcs"
+	if srcs != expectedSrcs {
 		t.Errorf("Expected srcs %v, got %v", expectedSrcs, srcs)
 	}
 	
