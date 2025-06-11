@@ -1,3 +1,4 @@
+load("@gazelle-foreign-cc//rules:cmake_configure_file.bzl", "cmake_configure_file")
 load("@gazelle-foreign-cc//rules:cmake_include_directories.bzl", "cmake_include_directories")
 load("@rules_cc//cc:defs.bzl", "cc_library")
 
@@ -12,6 +13,37 @@ load("@rules_cc//cc:defs.bzl", "cc_library")
 # gazelle:cmake_define WITH_SASL OFF
 # gazelle:cmake_define ENABLE_LZ4_EXT OFF
 # gazelle:cmake_define WITH_LIBDL OFF
+
+cmake_configure_file(
+    name = "config_h_generated",
+    out = "config.h",
+    cmake_binary = "//:cmake",
+    cmake_source_dir = "@librdkafka",
+    cmake_source_files = [
+        "@librdkafka//:srcs",
+    ],
+    defines = {
+        "RDKAFKA_BUILD_STATIC": "ON",
+        "RDKAFKA_BUILD_TESTS": "OFF",
+        "RDKAFKA_BUILD_EXAMPLES": "OFF",
+        "WITH_ZSTD": "OFF",
+        "WITH_SSL": "OFF",
+        "WITH_SASL_SCRAM": "ON",
+        "WITH_SASL_OAUTHBEARER": "ON",
+        "WITH_SASL": "OFF",
+        "ENABLE_LZ4_EXT": "OFF",
+        "WITH_LIBDL": "OFF",
+    },
+    generated_file_path = "generated/config.h",
+)
+
+# Use a symlink approach to place config.h where it can be found by ../config.h
+genrule(
+    name = "config_h_symlink",
+    srcs = [":config_h_generated"],
+    outs = ["external_librdkafka_config/config.h"],
+    cmd = "mkdir -p `dirname $@` && cp $(location :config_h_generated) $@",
+)
 
 cmake_include_directories(
     name = "librdkafka_includes_1",
@@ -31,6 +63,7 @@ cmake_include_directories(
 cc_library(
     name = "rdkafka",
     srcs = [
+        ":config_h_symlink",
         "@librdkafka//:src/crc32c.c",
         "@librdkafka//:src/lz4.c",
         "@librdkafka//:src/lz4frame.c",
@@ -102,6 +135,7 @@ cc_library(
         "@librdkafka//:src/tinycthread.c",
         "@librdkafka//:src/tinycthread_extra.c",
     ],
+    includes = ["external_librdkafka_config"],
     deps = [":librdkafka_includes_1"],
 )
 
