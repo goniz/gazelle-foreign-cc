@@ -5,7 +5,6 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/goniz/gazelle-foreign-cc/gazelle"
 	"github.com/goniz/gazelle-foreign-cc/common"
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/language"
@@ -46,7 +45,7 @@ func TestExternalRepoPathGeneration(t *testing.T) {
 		RepoRoot: "/test/workspace",
 		Exts:     make(map[string]interface{}),
 	}
-	c.Exts["cmake"] = gazelle.NewCMakeConfig()
+	c.Exts["cmake"] = common.NewCMakeConfig()
 	
 	args := language.GenerateArgs{
 		Config: c,
@@ -99,7 +98,7 @@ func TestFindExternalRepoSimplified(t *testing.T) {
 		RepoRoot: "/test/workspace",
 		Exts:     make(map[string]interface{}),
 	}
-	c.Exts["cmake"] = gazelle.NewCMakeConfig()
+	c.Exts["cmake"] = common.NewCMakeConfig()
 	
 	args := language.GenerateArgs{
 		Config: c,
@@ -241,7 +240,7 @@ func TestCMakeIncludeDirectoriesGenerationCore(t *testing.T) {
 		RepoRoot: "/test/workspace",
 		Exts:     make(map[string]interface{}),
 	}
-	c.Exts["cmake"] = gazelle.NewCMakeConfig()
+	c.Exts["cmake"] = common.NewCMakeConfig()
 	
 	args := language.GenerateArgs{
 		Config: c,
@@ -279,7 +278,7 @@ func TestCMakeIncludeDirectoriesGenerationCore(t *testing.T) {
 	}
 	
 	// Call the method under test
-	result := lang.generateRulesFromTargetsWithRepoAndAPI(args, cmakeTargets, "", nil)
+	result := lang.generateRulesFromTargetsWithRepoAndAPI(args, cmakeTargets, "", nil, map[string]string{})
 	
 	// Verify that cmake_include_directories targets were generated
 	var includeRules []*rule.Rule
@@ -305,11 +304,11 @@ func TestCMakeIncludeDirectoriesGenerationCore(t *testing.T) {
 	
 	for _, r := range includeRules {
 		includes := r.AttrStrings("includes")
-		srcs := r.AttrStrings("srcs")
+		srcs := r.AttrString("srcs")
 		
 		// Should have srcs set to glob for local projects
-		expectedSrcs := []string{"glob([\"**/*\"])"}
-		if !reflect.DeepEqual(srcs, expectedSrcs) {
+		expectedSrcs := "glob([\"**/*\"])"
+		if srcs != expectedSrcs {
 			t.Errorf("Expected srcs %v for rule %s, got %v", expectedSrcs, r.Name(), srcs)
 		}
 		
@@ -342,7 +341,7 @@ func TestCMakeIncludeDirectoriesExternalRepoCore(t *testing.T) {
 		RepoRoot: "/test/workspace",
 		Exts:     make(map[string]interface{}),
 	}
-	c.Exts["cmake"] = gazelle.NewCMakeConfig()
+	c.Exts["cmake"] = common.NewCMakeConfig()
 	
 	args := language.GenerateArgs{
 		Config: c,
@@ -364,7 +363,7 @@ func TestCMakeIncludeDirectoriesExternalRepoCore(t *testing.T) {
 	}
 	
 	// Call with external repo
-	result := lang.generateRulesFromTargetsWithRepoAndAPI(args, cmakeTargets, "libzmq", nil)
+	result := lang.generateRulesFromTargetsWithRepoAndAPI(args, cmakeTargets, "libzmq", nil, map[string]string{})
 	
 	// Find the cmake_include_directories rule
 	var includeRule *rule.Rule
@@ -385,10 +384,10 @@ func TestCMakeIncludeDirectoriesExternalRepoCore(t *testing.T) {
 		t.Errorf("Expected include rule name 'libzmq_includes', got '%s'", includeRule.Name())
 	}
 	
-	// Should have srcs = ["@libzmq//:srcs"]
-	srcs := includeRule.AttrStrings("srcs")
-	expectedSrcs := []string{"@libzmq//:srcs"}
-	if !reflect.DeepEqual(srcs, expectedSrcs) {
+	// Should have srcs = "@libzmq//:srcs"
+	srcs := includeRule.AttrString("srcs")
+	expectedSrcs := "@libzmq//:srcs"
+	if srcs != expectedSrcs {
 		t.Errorf("Expected srcs %v, got %v", expectedSrcs, srcs)
 	}
 	

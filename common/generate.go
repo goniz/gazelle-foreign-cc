@@ -344,6 +344,11 @@ func generateRulesFromCMakeFile(args language.GenerateArgs, cmakeFilePath string
 
 // GenerateRules is the main GenerateRules function (updated to use CMake File API)
 func GenerateRules(args language.GenerateArgs) language.GenerateResult {
+	return GenerateRulesWithDefines(args, make(map[string]string))
+}
+
+// GenerateRulesWithDefines is the main GenerateRules function with custom defines
+func GenerateRulesWithDefines(args language.GenerateArgs, packageDefines map[string]string) language.GenerateResult {
 	cfg := GetCMakeConfig(args.Config)
 	cmakeFilePath := filepath.Join(args.Dir, "CMakeLists.txt")
 
@@ -352,6 +357,12 @@ func GenerateRules(args language.GenerateArgs) language.GenerateResult {
 		return language.GenerateResult{}
 	}
 
+	// Create a modified config with package-scoped defines
+	packageCfg := &CMakeConfig{
+		CMakeExecutable: cfg.CMakeExecutable,
+		CMakeDefines:    packageDefines,
+	}
+
 	// Use regex-based parsing (fallback method)
-	return generateRulesFromCMakeFile(args, cmakeFilePath, cfg)
+	return generateRulesFromCMakeFile(args, cmakeFilePath, packageCfg)
 }

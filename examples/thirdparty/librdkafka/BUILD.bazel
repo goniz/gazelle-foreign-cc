@@ -1,3 +1,6 @@
+load("@gazelle-foreign-cc//rules:cmake_include_directories.bzl", "cmake_include_directories")
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
 # gazelle:cmake_source @librdkafka
 # gazelle:cmake_define RDKAFKA_BUILD_STATIC ON
 # gazelle:cmake_define RDKAFKA_BUILD_TESTS OFF
@@ -9,3 +12,117 @@
 # gazelle:cmake_define WITH_SASL OFF
 # gazelle:cmake_define ENABLE_LZ4_EXT OFF
 # gazelle:cmake_define WITH_LIBDL OFF
+
+cmake_include_directories(
+    name = "librdkafka_includes_1",
+    srcs = "@librdkafka//:srcs",
+    includes = ["src"],
+)
+
+cmake_include_directories(
+    name = "librdkafka_includes_2",
+    srcs = "@librdkafka//:srcs",
+    includes = [
+        "src",
+        "src-cpp",
+    ],
+)
+
+cc_library(
+    name = "rdkafka",
+    srcs = [
+        "@librdkafka//:src/crc32c.c",
+        "@librdkafka//:src/lz4.c",
+        "@librdkafka//:src/lz4frame.c",
+        "@librdkafka//:src/lz4hc.c",
+        "@librdkafka//:src/rdaddr.c",
+        "@librdkafka//:src/rdavl.c",
+        "@librdkafka//:src/rdbuf.c",
+        "@librdkafka//:src/rdcrc32.c",
+        "@librdkafka//:src/rdfnv1a.c",
+        "@librdkafka//:src/rdgz.c",
+        "@librdkafka//:src/rdhdrhistogram.c",
+        "@librdkafka//:src/rdkafka.c",
+        "@librdkafka//:src/rdkafka_admin.c",
+        "@librdkafka//:src/rdkafka_assignment.c",
+        "@librdkafka//:src/rdkafka_assignor.c",
+        "@librdkafka//:src/rdkafka_aux.c",
+        "@librdkafka//:src/rdkafka_background.c",
+        "@librdkafka//:src/rdkafka_broker.c",
+        "@librdkafka//:src/rdkafka_buf.c",
+        "@librdkafka//:src/rdkafka_cert.c",
+        "@librdkafka//:src/rdkafka_cgrp.c",
+        "@librdkafka//:src/rdkafka_conf.c",
+        "@librdkafka//:src/rdkafka_coord.c",
+        "@librdkafka//:src/rdkafka_error.c",
+        "@librdkafka//:src/rdkafka_event.c",
+        "@librdkafka//:src/rdkafka_feature.c",
+        "@librdkafka//:src/rdkafka_header.c",
+        "@librdkafka//:src/rdkafka_idempotence.c",
+        "@librdkafka//:src/rdkafka_interceptor.c",
+        "@librdkafka//:src/rdkafka_lz4.c",
+        "@librdkafka//:src/rdkafka_metadata.c",
+        "@librdkafka//:src/rdkafka_metadata_cache.c",
+        "@librdkafka//:src/rdkafka_mock.c",
+        "@librdkafka//:src/rdkafka_mock_cgrp.c",
+        "@librdkafka//:src/rdkafka_mock_handlers.c",
+        "@librdkafka//:src/rdkafka_msg.c",
+        "@librdkafka//:src/rdkafka_msgset_reader.c",
+        "@librdkafka//:src/rdkafka_msgset_writer.c",
+        "@librdkafka//:src/rdkafka_offset.c",
+        "@librdkafka//:src/rdkafka_op.c",
+        "@librdkafka//:src/rdkafka_partition.c",
+        "@librdkafka//:src/rdkafka_pattern.c",
+        "@librdkafka//:src/rdkafka_queue.c",
+        "@librdkafka//:src/rdkafka_range_assignor.c",
+        "@librdkafka//:src/rdkafka_request.c",
+        "@librdkafka//:src/rdkafka_roundrobin_assignor.c",
+        "@librdkafka//:src/rdkafka_sasl.c",
+        "@librdkafka//:src/rdkafka_sasl_oauthbearer.c",
+        "@librdkafka//:src/rdkafka_sasl_plain.c",
+        "@librdkafka//:src/rdkafka_sasl_scram.c",
+        "@librdkafka//:src/rdkafka_sticky_assignor.c",
+        "@librdkafka//:src/rdkafka_subscription.c",
+        "@librdkafka//:src/rdkafka_timer.c",
+        "@librdkafka//:src/rdkafka_topic.c",
+        "@librdkafka//:src/rdkafka_transport.c",
+        "@librdkafka//:src/rdkafka_txnmgr.c",
+        "@librdkafka//:src/rdlist.c",
+        "@librdkafka//:src/rdlog.c",
+        "@librdkafka//:src/rdmap.c",
+        "@librdkafka//:src/rdmurmur2.c",
+        "@librdkafka//:src/rdports.c",
+        "@librdkafka//:src/rdrand.c",
+        "@librdkafka//:src/rdregex.c",
+        "@librdkafka//:src/rdstring.c",
+        "@librdkafka//:src/rdunittest.c",
+        "@librdkafka//:src/rdvarint.c",
+        "@librdkafka//:src/rdxxhash.c",
+        "@librdkafka//:src/snappy.c",
+        "@librdkafka//:src/tinycthread.c",
+        "@librdkafka//:src/tinycthread_extra.c",
+    ],
+    deps = [":librdkafka_includes_1"],
+)
+
+cc_library(
+    name = "rdkafka++",
+    srcs = [
+        "@librdkafka//:src-cpp/ConfImpl.cpp",
+        "@librdkafka//:src-cpp/ConsumerImpl.cpp",
+        "@librdkafka//:src-cpp/HandleImpl.cpp",
+        "@librdkafka//:src-cpp/HeadersImpl.cpp",
+        "@librdkafka//:src-cpp/KafkaConsumerImpl.cpp",
+        "@librdkafka//:src-cpp/MessageImpl.cpp",
+        "@librdkafka//:src-cpp/MetadataImpl.cpp",
+        "@librdkafka//:src-cpp/ProducerImpl.cpp",
+        "@librdkafka//:src-cpp/QueueImpl.cpp",
+        "@librdkafka//:src-cpp/RdKafka.cpp",
+        "@librdkafka//:src-cpp/TopicImpl.cpp",
+        "@librdkafka//:src-cpp/TopicPartitionImpl.cpp",
+    ],
+    deps = [
+        ":librdkafka_includes_2",
+        ":rdkafka",
+    ],
+)

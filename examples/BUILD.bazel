@@ -15,7 +15,10 @@ sh_binary(
 # Default gazelle target for examples
 gazelle(
     name = "gazelle",
-    data = ["@libzmq//:srcs"],
+    data = [
+        "@libzmq//:srcs",
+        "@librdkafka//:srcs",
+    ],
     # Use the gazelle-foreign-cc plugin from the main module
     gazelle = "@gazelle-foreign-cc//gazelle:gazelle-foreign-cc",
 )

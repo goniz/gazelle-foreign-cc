@@ -3,7 +3,6 @@ package common
 import (
 	"flag"
 	"log"
-	"strings"
 
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/rule"
@@ -79,15 +78,9 @@ func (cfg *CMakeConfig) Configure(c *config.Config, rel string, f *rule.File) {
 			// The cmake_source directive is handled per-package in GenerateRules, not globally
 			log.Printf("Configure: Found cmake_source directive %s in %s (will be processed per-package)", directive.Value, rel)
 		case CMakeDefineDirective:
-			// Parse cmake_define directive in format "KEY VALUE"
-			parts := strings.Fields(directive.Value)
-			if len(parts) != 2 {
-				log.Printf("Configure: Invalid cmake_define directive format '%s' in %s. Expected format: 'KEY VALUE'", directive.Value, rel)
-				continue
-			}
-			key, value := parts[0], parts[1]
-			cfg.CMakeDefines[key] = value
-			log.Printf("Configure: Set CMake define %s=%s from directive in %s", key, value, rel)
+			// cmake_define directives are now processed per-package in GenerateRules
+			// to ensure proper scoping instead of global application
+			log.Printf("Configure: Found cmake_define directive %s in %s (will be processed per-package)", directive.Value, rel)
 		// Add cases for other directives here
 		default:
 			// Gazelle will warn about unknown directives if not in KnownDirectives()
