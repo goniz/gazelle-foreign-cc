@@ -30,8 +30,15 @@ jobs:
       - name: Build gazelle-foreign-cc plugin
         run: bazel build //cmd/gazelle-foreign-cc:gazelle
 
-      - name: Generate and build examples
+      - name: Generate example BUILD files
         run: |
           bazel run //:gazelle
-          bazel build //...
-        working-directory: ${{ github.workspace }}/examples
+        working-directory: examples
+
+      - name: "Build Example: libzmq"
+        run: bazel build //libzmq:all
+        working-directory: examples
+
+      - name: "Build Example: librdkafka"
+        run: bazel build //thirdparty/librdkafka:all
+        working-directory: examples
