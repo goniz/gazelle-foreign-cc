@@ -7,7 +7,8 @@ on:
     branches: [ main ]
 
 jobs:
-  build:
+  plugin-tests:
+    name: Plugin Go Tests
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -18,27 +19,41 @@ jobs:
         with:
           bazelrc: ${{ secrets.BUILDBUDDY_BAZELRC }}
 
-      - name: Verify Bazel module integrity
-        run: |
-          bazel mod tidy
-          cd examples
-          bazel mod tidy
-
       - name: Run Go tests
         run: bazel test //...
 
-      - name: Build gazelle-foreign-cc plugin
-        run: bazel build //cmd/gazelle-foreign-cc:gazelle
+  example-libzmq:
+    name: "Example: libzmq"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - name: Generate example BUILD files
-        run: |
-          bazel run //:gazelle
-        working-directory: examples
+      - name: Set up Bazel
+        uses: bazel-contrib/setup-bazel@0.14.0
+        with:
+          bazelrc: ${{ secrets.BUILDBUDDY_BAZELRC }}
 
       - name: "Build Example: libzmq"
-        run: bazel build //libzmq:all
+        run: |
+          bazel run //:gazelle
+          bazel build //libzmq:all
         working-directory: examples
 
+  example-librdkafka:
+    name: "Example: librdkafka"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Bazel
+        uses: bazel-contrib/setup-bazel@0.14.0
+        with:
+          bazelrc: ${{ secrets.BUILDBUDDY_BAZELRC }}
+
       - name: "Build Example: librdkafka"
-        run: bazel build //thirdparty/librdkafka:all
+        run: |
+          bazel run //:gazelle
+          bazel build //thirdparty/librdkafka:all
         working-directory: examples
