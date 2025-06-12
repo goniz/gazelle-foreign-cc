@@ -378,7 +378,7 @@ func (l *cmakeLang) generateRulesFromTargetsWithRepoAndAPI(args language.Generat
 		for _, header := range cmTarget.Headers {
 			// Check if this header matches any configure_file output
 			for _, configFile := range configureFiles {
-				if header == configFile.OutputFile || header == ".cmake-build/"+filepath.Base(configFile.OutputFile) {
+				if matchesConfigureFileOutput(header, configFile.OutputFile) {
 					referencedGeneratedFiles[configFile.OutputFile] = configFile
 					log.Printf("Target %s references configure_file output %s", cmTarget.Name, configFile.OutputFile)
 				}
@@ -787,4 +787,37 @@ func (l *cmakeLang) Imports(c *config.Config, r *rule.Rule, f *rule.File) []reso
 	// For now, return empty list
 	// In a real implementation, this would parse source files for #include statements
 	return nil
+}
+
+// matchesConfigureFileOutput checks if a header file matches a configure_file output.
+// It handles CMake variable substitution (e.g., ${GENERATED_DIR}) and basename matching.
+func matchesConfigureFileOutput(header, configOutput string) bool {
+	// Direct match
+	if header == configOutput {
+		return true
+	}
+
+	// Check against .cmake-build/ prefix (existing logic)
+	if header == ".cmake-build/"+filepath.Base(configOutput) {
+		return true
+	}
+
+	// Extract basename from configure_file output, handling CMake variables
+	configBasename := filepath.Base(configOutput)
+	// Remove common CMake variable patterns from the path
+	configClean := strings.ReplaceAll(configOutput, "${GENERATED_DIR}/", "")
+	configClean = strings.ReplaceAll(configClean, "${CMAKE_CURRENT_BINARY_DIR}/", "")
+	configClean = strings.ReplaceAll(configClean, "${CMAKE_BINARY_DIR}/", "")
+	
+	// Check if header matches the cleaned path or just the basename
+	if header == configClean || header == filepath.Base(configClean) {
+		return true
+	}
+
+	// Check if just the basenames match
+	if filepath.Base(header) == configBasename {
+		return true
+	}
+
+	return false
 }
