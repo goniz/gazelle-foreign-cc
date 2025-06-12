@@ -3,14 +3,21 @@
 def _create_compilation_context(ctx, output_file):
     """Create a compilation context for the generated header file."""
 
-    # The generated file will be available via the standard Bazel genfiles mechanism
-    # Since output_file.dirname gives us the genfiles path for this package,
-    # we can use that as the include directory
+    # Create a virtual header that makes the config.h accessible via relative paths
+    # For external repositories that use "../config.h", we need to make our generated
+    # config.h findable via that path. We do this by adding appropriate include directories.
+
+    # Add the directory containing the output file
     genfiles_include = output_file.dirname
+
+    # Also add a quote include directory that can resolve "../config.h"
+    # from external repo src directories to our generated file
+    quote_includes = [genfiles_include]
 
     compilation_context = cc_common.create_compilation_context(
         headers = depset([output_file]),
         includes = depset([genfiles_include]),
+        quote_includes = depset(quote_includes),
     )
 
     return compilation_context

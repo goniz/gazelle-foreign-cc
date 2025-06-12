@@ -297,6 +297,34 @@ cc_library(
     ],
     deps = [
         ":libzmq_includes",
+        ":libzmq_pc",
         ":platform_hpp",
+        ":version_rc",
     ],
+)
+
+cmake_configure_file(
+    name = "version_rc",
+    out = ".cmake-build/version.rc",
+    cmake_binary = "//:cmake",
+    cmake_source_dir = ".",
+    cmake_source_files = ["@libzmq//:srcs"],
+    defines = {
+        "WITH_PERF_TOOL": "OFF",
+        "ZMQ_BUILD_TESTS": "OFF",
+    },
+    generated_file_path = "version.rc",
+)
+
+cmake_configure_file(
+    name = "libzmq_pc",
+    out = ".cmake-build/libzmq.pc",
+    cmake_binary = "//:cmake",
+    cmake_source_dir = ".",
+    cmake_source_files = ["@libzmq//:srcs"],
+    defines = {
+        "WITH_PERF_TOOL": "OFF",
+        "ZMQ_BUILD_TESTS": "OFF",
+    },
+    generated_file_path = "libzmq.pc",
 )

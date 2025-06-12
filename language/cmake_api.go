@@ -485,8 +485,7 @@ func (api *CMakeFileAPI) parseCMakeListsForConfigureFile() ([]*common.CMakeConfi
 	var configureFiles []*common.CMakeConfigureFile
 	variables := make(map[string]string)
 	
-	// Only include cmake defines from gazelle directives (not variables discovered by File API)
-	// The cmake binary will handle determining all other variables automatically
+	// Include cmake defines from gazelle directives
 	for k, v := range api.cmakeDefines {
 		variables[k] = v
 	}

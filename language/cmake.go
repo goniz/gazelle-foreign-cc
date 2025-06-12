@@ -370,6 +370,9 @@ func (l *cmakeLang) generateRulesFromTargetsWithRepoAndAPI(args language.Generat
 		}
 	}
 
+	// Discover headers that could match configure_file outputs
+	discoverConfigureFileHeaders(cmakeTargets, configureFiles, args.Dir)
+
 	// First, collect all generated files that are actually referenced by CMake targets
 	referencedGeneratedFiles := make(map[string]*common.CMakeConfigureFile)
 
@@ -821,3 +824,63 @@ func matchesConfigureFileOutput(header, configOutput string) bool {
 
 	return false
 }
+
+// discoverConfigureFileHeaders checks if configure_file outputs would be accessible via target include directories.
+// For generated headers, we check if the output directory is included in the target's include paths.
+func discoverConfigureFileHeaders(cmakeTargets []*common.CMakeTarget, configureFiles []*common.CMakeConfigureFile, sourceDir string) {
+	if len(configureFiles) == 0 {
+		return
+	}
+
+	log.Printf("Discovering headers for %d configure_file outputs", len(configureFiles))
+
+	// For each configure_file, check if its output directory is accessible via include paths
+	for _, configFile := range configureFiles {
+		configBasename := filepath.Base(configFile.OutputFile)
+		configDir := getConfigureFileOutputDirectory(configFile.OutputFile, sourceDir)
+		log.Printf("Looking for targets that include directory for configure_file output: %s (basename: %s, dir: %s)", configFile.OutputFile, configBasename, configDir)
+		
+		// Check each target to see if it includes the directory where the configure_file output will be generated
+		for _, target := range cmakeTargets {
+			if targetIncludesDirectory(target, configDir, sourceDir) {
+				log.Printf("Target %s includes directory %s, adding header %s", target.Name, configDir, configBasename)
+				target.Headers = appendIfMissing(target.Headers, configBasename)
+			}
+		}
+	}
+}
+
+// getConfigureFileOutputDirectory extracts the directory where a configure_file output will be generated.
+func getConfigureFileOutputDirectory(outputFile, sourceDir string) string {
+	// Handle CMake variable substitution
+	outputClean := outputFile
+	outputClean = strings.ReplaceAll(outputClean, "${GENERATED_DIR}", ".cmake-build/generated")
+	outputClean = strings.ReplaceAll(outputClean, "${CMAKE_CURRENT_BINARY_DIR}", ".cmake-build")
+	outputClean = strings.ReplaceAll(outputClean, "${CMAKE_BINARY_DIR}", ".cmake-build")
+	
+	// Get the directory part
+	return filepath.Dir(outputClean)
+}
+
+// targetIncludesDirectory checks if a target's include directories contain the specified directory.
+func targetIncludesDirectory(target *common.CMakeTarget, targetDir, sourceDir string) bool {
+	for _, includeDir := range target.IncludeDirectories {
+		// Normalize include directory path
+		normalizedIncludeDir := includeDir
+		if !filepath.IsAbs(includeDir) {
+			normalizedIncludeDir = filepath.Clean(includeDir)
+		}
+		
+		// Check if the target directory matches or is accessible from the include directory
+		if normalizedIncludeDir == targetDir || 
+		   targetDir == "." || 
+		   strings.HasPrefix(targetDir, normalizedIncludeDir+"/") ||
+		   strings.HasPrefix(normalizedIncludeDir, targetDir+"/") || // Include subdirectory can access parent
+		   (normalizedIncludeDir == ".cmake-build/generated/dummy" && targetDir == ".cmake-build/generated") {
+			log.Printf("Target %s include directory %s matches configure_file directory %s", target.Name, normalizedIncludeDir, targetDir)
+			return true
+		}
+	}
+	return false
+}
+
