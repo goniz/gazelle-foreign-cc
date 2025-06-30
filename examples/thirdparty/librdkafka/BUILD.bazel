@@ -23,14 +23,16 @@ cmake_include_directories(
 cmake_include_directories(
     name = "librdkafka_includes_2",
     srcs = "@librdkafka//:srcs",
-    includes = ["src"],
+    includes = [
+        "src",
+        "src-cpp",
+    ],
 )
 
 cc_library(
     name = "rdkafka",
     srcs = [
         "@librdkafka//:src/crc32c.c",
-        "@librdkafka//:src/lz4.c",
         "@librdkafka//:src/lz4frame.c",
         "@librdkafka//:src/lz4hc.c",
         "@librdkafka//:src/rdaddr.c",
@@ -100,9 +102,9 @@ cc_library(
         "@librdkafka//:src/tinycthread.c",
         "@librdkafka//:src/tinycthread_extra.c",
     ],
+    hdrs = [":config_h", "@librdkafka//:src/lz4.c"],
     deps = [
-        ":config_h",
-        ":librdkafka_includes_2",
+        ":librdkafka_includes_3",
     ],
 )
 
@@ -122,9 +124,9 @@ cc_library(
         "@librdkafka//:src-cpp/TopicImpl.cpp",
         "@librdkafka//:src-cpp/TopicPartitionImpl.cpp",
     ],
+    hdrs = [":config_h"],
     deps = [
-        ":config_h",
-        ":librdkafka_includes_3",
+        ":librdkafka_includes_2",
         ":rdkafka",
     ],
 )
@@ -153,8 +155,5 @@ cmake_configure_file(
 cmake_include_directories(
     name = "librdkafka_includes_3",
     srcs = "@librdkafka//:srcs",
-    includes = [
-        "src",
-        "src-cpp",
-    ],
+    includes = ["src"],
 )
