@@ -127,10 +127,15 @@ def _cmake_configure_file_impl(ctx):
     # avoiding intrusive source edits or additional include paths.
 
     root_copy_out = None
-    if output_file.basename == "config.h" and "/" in output_file.short_path:
-        parent_dir = output_file.dirname.rpartition("/")[0]
-        if parent_dir:
-            root_copy_out = ctx.actions.declare_file(parent_dir + "/config.h")
+    if output_file.basename == "config.h":
+        # Determine the desired root-level path.  If the generated file lives at
+        #   generated/config.h   we want an additional copy at   config.h .
+        parent_dir = output_file.dirname.rpartition("/")[0]  # "" if single component
+        root_relative_path = "config.h" if parent_dir == "" else parent_dir + "/config.h"
+
+        # Only create the extra copy if it differs from the primary output.
+        if root_relative_path != output_file.short_path:
+            root_copy_out = ctx.actions.declare_file(root_relative_path)
 
             ctx.actions.run_shell(
                 inputs = [output_file],

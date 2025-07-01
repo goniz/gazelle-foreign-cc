@@ -155,6 +155,7 @@ cc_library(
         "@libzmq//:src/zmtp_engine.cpp",
     ],
     hdrs = [
+        "@libzmq//:config_h",
         "@libzmq//:external/sha1/sha1.h",
         "@libzmq//:src/address.hpp",
         "@libzmq//:src/array.hpp",
@@ -300,9 +301,7 @@ cc_library(
     ],
     deps = [
         ":libzmq_includes",
-        ":libzmq_pc",
-        ":platform_hpp",
-        ":version_rc",
+        "@libzmq//:config_h",
     ],
 )
 

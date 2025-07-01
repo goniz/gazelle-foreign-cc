@@ -30,8 +30,32 @@ http_archive(
 
 http_archive(
     name = "librdkafka",
-    build_file = "@gazelle-foreign-cc//:external_repo_buildfile.BUILD",
-    integrity = "sha256-anR9KTp6RhO9KJfijoeRR2++Guc2HyUwqHbg/Ug0gqY=",
     strip_prefix = "librdkafka-1.8.2",
+    integrity = "sha256-anR9KTp6RhO9KJfijoeRR2++Guc2HyUwqHbg/Ug0gqY=",
     url = "https://github.com/edenhill/librdkafka/archive/v1.8.2.tar.gz",
+
+    # Provide a custom BUILD file that exports all sources *and* defines a
+    # cmake_configure_file rule called :config_h which generates the root-level
+    # config.h required by tinycthread (../config.h include).
+    build_file_content = """
+package(default_visibility = ["//visibility:public"])
+
+load("@gazelle-foreign-cc//rules:cmake_configure_file.bzl", "cmake_configure_file")
+
+# All files for Gazelle's overlay to reference
+filegroup(
+    name = "srcs",
+    srcs = glob(["**"], allow_empty = False),
+)
+
+# Generate the root-level config.h using CMake
+cmake_configure_file(
+    name = "config_h",
+    out = "generated/config.h",
+    cmake_binary = "@examples//:cmake",
+    cmake_source_dir = ".",  # project root
+    cmake_source_files = glob(["**"], exclude = []),
+    generated_file_path = "generated/config.h",  # CMake places it in generated
+)
+""",
 )

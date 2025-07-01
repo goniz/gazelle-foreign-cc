@@ -395,6 +395,14 @@ func (l *cmakeLang) generateRulesFromTargetsWithRepoAndAPI(args language.Generat
 
 	// Generate cmake_configure_file rules only for files that are actually referenced
 	for _, configFile := range referencedGeneratedFiles {
+		// For external repos, we expect a predeclared :config_h rule
+		if externalRepo != "" {
+			// Map generated header to that existing target and skip rule generation
+			generatedFileMap["@"+externalRepo+"//:"+configFile.OutputFile] = "@"+externalRepo+"//:config_h"
+			generatedFileMap["@"+externalRepo+"//:"+filepath.Base(configFile.OutputFile)] = "@"+externalRepo+"//:config_h"
+			continue
+		}
+
 		// For external repos, we need to check if the input file exists in the external repo
 		var inputFileRef string
 		if externalRepo != "" {
@@ -698,6 +706,9 @@ func (l *cmakeLang) generateRulesFromTargetsWithRepoAndAPI(args language.Generat
 				// Reference the generated file via its target label as a dependency
 				generatedDeps = append(generatedDeps, targetName)
 				log.Printf("Target %s includes generated header %s via target %s", cmTarget.Name, h, targetName)
+				// Also expose the generated header itself via hdrs so that the
+				// compiler can see it directly during inclusion.
+				finalHdrs = append(finalHdrs, targetName)
 			} else if l.fileExistsInDir(h, args.Dir) {
 				if externalRepo != "" {
 					// For external repositories, generate labels that reference the external repo
