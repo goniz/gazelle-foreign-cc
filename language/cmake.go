@@ -423,10 +423,15 @@ func (l *cmakeLang) generateRulesFromTargetsWithRepoAndAPI(args language.Generat
 		// `.cmake-build/foo.h`).  This ensures include paths reported by
 		// CMake match the Bazel output location.
 		outputPath := configFile.OutputFile
-		// Heuristic: if the configure_file output is a root-level config.h, do not
-		// force it under .cmake-build so that relative includes like "../config.h"
-		// (seen in librdkafka) resolve.
-		if filepath.Base(outputPath) == "config.h" {
+		// Heuristic: Many projects generate a top-level config.h via configure_file.
+		// For LOCAL CMake projects we flatten that header to the package root so that
+		// sources like "../config.h" (relative to src/) resolve.  However, for
+		// EXTERNAL repositories we must keep the header under .cmake-build/generated
+		// because Bazel compiles the external sources in-place under
+		// external/+_repo_rules+<repo>/src/ and the relative include walks one level
+		// up into that generated directory.  So only rewrite to root when
+		// externalRepo is empty.
+		if filepath.Base(outputPath) == "config.h" && externalRepo == "" {
 			outputPath = "config.h"
 		} else if !strings.HasPrefix(outputPath, ".cmake-build/") {
 			outputPath = ".cmake-build/" + filepath.Base(configFile.OutputFile)
