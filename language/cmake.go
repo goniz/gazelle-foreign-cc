@@ -428,9 +428,18 @@ func (l *cmakeLang) generateRulesFromTargetsWithRepoAndAPI(args language.Generat
 		r.SetAttr("out", outputPath)
 
 		// Bazel's rule implementation copies the file from the CMake
-		// build directory. The path inside that build directory is just
-		// the basename of the output file.
-		r.SetAttr("generated_file_path", filepath.Base(configFile.OutputFile))
+		// build directory. We need to handle CMake variable substitution
+		// to get the correct path within the build directory.
+		generatedPath := configFile.OutputFile
+		// Handle common CMake variable substitutions
+		generatedPath = strings.ReplaceAll(generatedPath, "${GENERATED_DIR}/", "generated/")
+		generatedPath = strings.ReplaceAll(generatedPath, "${CMAKE_CURRENT_BINARY_DIR}/", "")
+		generatedPath = strings.ReplaceAll(generatedPath, "${CMAKE_BINARY_DIR}/", "")
+		// If no variables were found, use just the basename
+		if generatedPath == configFile.OutputFile {
+			generatedPath = filepath.Base(configFile.OutputFile)
+		}
+		r.SetAttr("generated_file_path", generatedPath)
 
 		// Set cmake_binary to reference the examples cmake target for examples directory
 		r.SetAttr("cmake_binary", "//:cmake")

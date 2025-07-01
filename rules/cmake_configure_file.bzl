@@ -52,6 +52,7 @@ def _cmake_configure_file_impl(ctx):
     # Get source files and derive the actual source directory
     inputs = []
     actual_source_dir = "."
+    external_repo_root = None
     if ctx.attr.cmake_source_files:
         inputs.extend(ctx.files.cmake_source_files)
 
@@ -60,6 +61,12 @@ def _cmake_configure_file_impl(ctx):
             if file.basename == "CMakeLists.txt":
                 # Use the directory containing CMakeLists.txt
                 actual_source_dir = file.dirname
+                break
+        
+        # Detect if we're working with an external repository
+        for file_target in ctx.attr.cmake_source_files:
+            if file_target.label.workspace_root:
+                external_repo_root = file_target.label.workspace_root
                 break
 
     # Run cmake configure to generate files
@@ -109,8 +116,20 @@ def _cmake_configure_file_impl(ctx):
     # Create compilation context for cc targets that depend on this
     compilation_context = _create_compilation_context(ctx, output_file)
 
+    # For external repositories, also create a symlink at the expected location
+    # so that "../config.h" includes from src/ directories work correctly
+    all_outputs = [output_file]
+    if external_repo_root and output_file.basename == "config.h":
+        # Create a symlink in the external repo root so "../config.h" works
+        symlink_file = ctx.actions.declare_file(external_repo_root + "/" + output_file.basename)
+        ctx.actions.symlink(
+            output = symlink_file,
+            target_file = output_file,
+        )
+        all_outputs.append(symlink_file)
+
     return [
-        DefaultInfo(files = depset([output_file])),
+        DefaultInfo(files = depset(all_outputs)),
         CcInfo(compilation_context = compilation_context),
     ]
 
