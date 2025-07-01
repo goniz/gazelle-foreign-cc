@@ -87,7 +87,7 @@ def _cmake_configure_file_impl(ctx):
             build_dir.path,
         ] + define_args,
         mnemonic = "CMakeConfigure",
-        progress_message = "Running cmake configure",
+        progress_message = "Running cmake configure for external repo" if ctx.attr.cmake_source_dir_is_external else "Running cmake configure",
         use_default_shell_env = True,
     )
 

@@ -13,6 +13,7 @@ cmake_configure_file(
     out = "platform.hpp",
     cmake_binary = "//:cmake",
     cmake_source_dir = ".",
+    cmake_source_dir_is_external = True,
     cmake_source_files = ["@libzmq//:srcs"],
     defines = {
         "WITH_PERF_TOOL": "OFF",
@@ -136,6 +137,9 @@ cc_library(
         "@libzmq//:src/tcp_listener.cpp",
         "@libzmq//:src/thread.cpp",
         "@libzmq//:src/timers.cpp",
+        "@libzmq//:src/tipc_address.cpp",
+        "@libzmq//:src/tipc_connecter.cpp",
+        "@libzmq//:src/tipc_listener.cpp",
         "@libzmq//:src/trie.cpp",
         "@libzmq//:src/udp_address.cpp",
         "@libzmq//:src/udp_engine.cpp",
@@ -308,6 +312,7 @@ cmake_configure_file(
     out = ".cmake-build/version.rc",
     cmake_binary = "//:cmake",
     cmake_source_dir = ".",
+    cmake_source_dir_is_external = True,
     cmake_source_files = ["@libzmq//:srcs"],
     defines = {
         "WITH_PERF_TOOL": "OFF",
@@ -321,6 +326,7 @@ cmake_configure_file(
     out = ".cmake-build/libzmq.pc",
     cmake_binary = "//:cmake",
     cmake_source_dir = ".",
+    cmake_source_dir_is_external = True,
     cmake_source_files = ["@libzmq//:srcs"],
     defines = {
         "WITH_PERF_TOOL": "OFF",

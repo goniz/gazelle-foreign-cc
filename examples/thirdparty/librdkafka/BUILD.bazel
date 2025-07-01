@@ -137,6 +137,7 @@ cmake_configure_file(
     out = "config.h",
     cmake_binary = "//:cmake",
     cmake_source_dir = ".",
+    cmake_source_dir_is_external = True,
     cmake_source_files = ["@librdkafka//:srcs"],
     defines = {
         "ENABLE_LZ4_EXT": "OFF",
@@ -157,4 +158,27 @@ cmake_include_directories(
     name = "librdkafka_includes_3",
     srcs = "@librdkafka//:srcs",
     includes = ["src"],
+)
+
+cmake_configure_file(
+    name = "${GENERATED_DIR}_config_h",
+    out = "${GENERATED_DIR}/config.h",
+    cmake_binary = "//:cmake",
+    cmake_source_dir = ".",
+    cmake_source_files = [
+        "CMakeLists.txt",
+        "packaging/cmake/config.h.in",
+    ],
+    defines = {
+        "ENABLE_LZ4_EXT": "OFF",
+        "RDKAFKA_BUILD_EXAMPLES": "OFF",
+        "RDKAFKA_BUILD_STATIC": "ON",
+        "RDKAFKA_BUILD_TESTS": "OFF",
+        "WITH_LIBDL": "OFF",
+        "WITH_SASL": "OFF",
+        "WITH_SASL_OAUTHBEARER": "ON",
+        "WITH_SASL_SCRAM": "ON",
+        "WITH_SSL": "OFF",
+        "WITH_ZSTD": "OFF",
+    },
 )

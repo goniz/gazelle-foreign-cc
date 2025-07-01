@@ -251,7 +251,7 @@ func (l *cmakeLang) generateRulesFromExternalSource(args language.GenerateArgs, 
 		// Create a modified args for the external directory
 		externalArgs := args
 		externalArgs.Dir = externalRepoPath
-		return common.GenerateRulesWithDefines(externalArgs, packageDefines)
+		return common.GenerateRulesWithDefines(externalArgs, packageDefines, repoName)
 	}
 
 	log.Printf("Successfully parsed %d CMake targets from external repository %s", len(cmakeTargets), repoName)
