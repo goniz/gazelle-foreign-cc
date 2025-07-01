@@ -120,8 +120,16 @@ def _cmake_configure_file_impl(ctx):
     # so that "../config.h" includes from src/ directories work correctly
     all_outputs = [output_file]
     if external_repo_root and output_file.basename == "config.h":
-        # Create a symlink in the external repo root so "../config.h" works
-        symlink_file = ctx.actions.declare_file(external_repo_root + "/" + output_file.basename)
+        # Create a symlink in the external repo structure within our output directory
+        # This allows "../config.h" from src/ directories to find our generated file
+        # Remove leading "external/" if present and ensure proper path joining
+        repo_path = external_repo_root
+        if repo_path.startswith("external/"):
+            repo_path = repo_path[9:]  # Remove "external/" prefix
+        
+        # Use proper path joining to avoid double slashes
+        symlink_path = repo_path + "/" + output_file.basename
+        symlink_file = ctx.actions.declare_file(symlink_path)
         ctx.actions.symlink(
             output = symlink_file,
             target_file = output_file,
