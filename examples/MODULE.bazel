@@ -51,7 +51,7 @@ filegroup(
 # Generate the root-level config.h using CMake
 cmake_configure_file(
     name = "config_h",
-    out = "config.h",
+    out = ".cmake-build/generated/config.h",
     cmake_binary = "@examples//:cmake",
     cmake_source_dir = ".",  # project root
     cmake_source_files = glob(["**"], exclude = []),

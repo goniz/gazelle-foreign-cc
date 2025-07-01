@@ -109,77 +109,37 @@ def _cmake_configure_file_impl(ctx):
     # ---------------------------------------------------------------------
     # Extra convenience copy for headers included with "../config.h"
     # ---------------------------------------------------------------------
-    # Several upstream libraries (e.g. tinycthread from librdkafka) place a
-    # generated   config.h   at project-root level, then include it from
-    # sources that live in a sub-directory via   #include "../config.h".
-    #
-    # Our default output path for external projects is
-    #   .cmake-build/generated/config.h
-    # When a file in   src/   includes "../config.h", the compiler will
-    # rebuild the path against each -I directory.  If one of the include
-    # dirs is   .cmake-build/generated   the search becomes
-    #   .cmake-build/generated/../config.h  →  .cmake-build/config.h.
-    #
-    # To satisfy that lookup we create a *second* output file one directory
-    # up ( .cmake-build/config.h ) that is a simple copy of the real file.
-    #
-    # This keeps the rule hermetic (both files are declared outputs) while
-    # avoiding intrusive source edits or additional include paths.
+    # We want exactly two include-able paths for the generated header:
+    #   1) .cmake-build/generated/config.h  (what CMake targets reference)
+    #   2) .cmake-build/config.h            (so "../config.h" from src/ works)
 
-    root_copy_out = None
-    if output_file.basename == "config.h":
-        # Determine the desired root-level path.  If the generated file lives at
-        #   generated/config.h   we want an additional copy at   config.h .
-        parent_dir = output_file.dirname.rpartition("/")[0]  # "" if single component
-        root_relative_path = "config.h" if parent_dir == "" else parent_dir + "/config.h"
+    compilation_headers = [output_file]
+    include_dirs = [output_file.dirname]  # e.g. .cmake-build/generated
 
-        # Only create the extra copy if it differs from the primary output.
-        if root_relative_path != output_file.short_path:
-            root_copy_out = ctx.actions.declare_file(root_relative_path)
+    # If the output lives in .../generated/, create the sibling copy one level up.
+    if output_file.short_path.startswith(".cmake-build/generated/"):
+        parent_copy = ctx.actions.declare_file(".cmake-build/config.h")
+        ctx.actions.run_shell(
+            inputs = [output_file],
+            outputs = [parent_copy],
+            command = "cp {} {}".format(output_file.path, parent_copy.path),
+            mnemonic = "ConfigHParentCopy",
+            progress_message = "Creating .cmake-build/config.h copy",
+        )
 
-            ctx.actions.run_shell(
-                inputs = [output_file],
-                outputs = [root_copy_out],
-                command = "cp {} {}".format(output_file.path, root_copy_out.path),
-                mnemonic = "CopyConfigHRoot",
-                progress_message = "Creating root-level config.h copy",
-            )
+        compilation_headers.append(parent_copy)
+        include_dirs.append(parent_copy.dirname)  # .cmake-build
 
-            # Additionally provide a convenience copy under .cmake-build/config.h so
-            # that include paths like .cmake-build/generated/../config.h resolve.
-            cmake_build_copy = ctx.actions.declare_file(".cmake-build/config.h")
-            ctx.actions.run_shell(
-                inputs = [output_file],
-                outputs = [cmake_build_copy],
-                command = "cp {} {}".format(output_file.path, cmake_build_copy.path),
-                mnemonic = "CopyConfigHBuildDir",
-                progress_message = "Creating .cmake-build/config.h copy",
-            )
+    # Always expose <repo_root> and <repo_root>/src to catch "../config.h" look-ups.
+    include_dirs.extend(["", "src"])
 
-            compilation_headers = [output_file]
-            include_dirs = [output_file.dirname]
-            if root_copy_out:
-                compilation_headers.append(root_copy_out)
-                include_dirs.append(root_copy_out.dirname)
+    compilation_context = cc_common.create_compilation_context(
+        headers = depset(compilation_headers),
+        includes = depset(include_dirs),
+        quote_includes = depset(include_dirs),
+    )
 
-            # Also add <output_dir>/src so that "../config.h" from sources under
-            # src/ resolves to the header at the repository root.
-            src_include = output_file.dirname + "/src"
-            include_dirs.append(src_include)
-
-            compilation_context = cc_common.create_compilation_context(
-                headers = depset(compilation_headers),
-                includes = depset(include_dirs),
-                quote_includes = depset(include_dirs),
-            )
-
-            compilation_headers.append(cmake_build_copy)
-            include_dirs.append(".cmake-build")
-
-    return [
-        DefaultInfo(files = depset(compilation_headers)),
-        CcInfo(compilation_context = compilation_context),
-    ]
+    return [DefaultInfo(files = depset(compilation_headers)), CcInfo(compilation_context = compilation_context)]
 
 cmake_configure_file = rule(
     implementation = _cmake_configure_file_impl,
