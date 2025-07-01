@@ -145,18 +145,36 @@ def _cmake_configure_file_impl(ctx):
                 progress_message = "Creating root-level config.h copy",
             )
 
-    # Extend compilation context to include the parent directory as well.
-    compilation_headers = [output_file]
-    include_dirs = [output_file.dirname]
-    if root_copy_out:
-        compilation_headers.append(root_copy_out)
-        include_dirs.append(root_copy_out.dirname)
+            # Additionally provide a convenience copy under .cmake-build/config.h so
+            # that include paths like .cmake-build/generated/../config.h resolve.
+            cmake_build_copy = ctx.actions.declare_file(".cmake-build/config.h")
+            ctx.actions.run_shell(
+                inputs = [output_file],
+                outputs = [cmake_build_copy],
+                command = "cp {} {}".format(output_file.path, cmake_build_copy.path),
+                mnemonic = "CopyConfigHBuildDir",
+                progress_message = "Creating .cmake-build/config.h copy",
+            )
 
-    compilation_context = cc_common.create_compilation_context(
-        headers = depset(compilation_headers),
-        includes = depset(include_dirs),
-        quote_includes = depset(include_dirs),
-    )
+            compilation_headers = [output_file]
+            include_dirs = [output_file.dirname]
+            if root_copy_out:
+                compilation_headers.append(root_copy_out)
+                include_dirs.append(root_copy_out.dirname)
+
+            # Also add <output_dir>/src so that "../config.h" from sources under
+            # src/ resolves to the header at the repository root.
+            src_include = output_file.dirname + "/src"
+            include_dirs.append(src_include)
+
+            compilation_context = cc_common.create_compilation_context(
+                headers = depset(compilation_headers),
+                includes = depset(include_dirs),
+                quote_includes = depset(include_dirs),
+            )
+
+            compilation_headers.append(cmake_build_copy)
+            include_dirs.append(".cmake-build")
 
     return [
         DefaultInfo(files = depset(compilation_headers)),
