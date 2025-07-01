@@ -395,9 +395,10 @@ func (l *cmakeLang) generateRulesFromTargetsWithRepoAndAPI(args language.Generat
 
 	// Generate cmake_configure_file rules only for files that are actually referenced
 	for _, configFile := range referencedGeneratedFiles {
-		// For external repos, we expect a predeclared :config_h rule
-		if externalRepo != "" {
-			// Map generated header to that existing target and skip rule generation
+		// For external repos, if the output is config.h we assume the repo
+		// already provides a :config_h target and map to it. Otherwise we need
+		// to emit an explicit cmake_configure_file rule.
+		if externalRepo != "" && filepath.Base(configFile.OutputFile) == "config.h" {
 			generatedFileMap["@"+externalRepo+"//:"+configFile.OutputFile] = "@"+externalRepo+"//:config_h"
 			generatedFileMap["@"+externalRepo+"//:"+filepath.Base(configFile.OutputFile)] = "@"+externalRepo+"//:config_h"
 			continue
