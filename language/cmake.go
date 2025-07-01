@@ -6,14 +6,15 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/bazelbuild/bazel-gazelle/config"
-	"github.com/bazelbuild/bazel-gazelle/label"
 	"github.com/bazelbuild/bazel-gazelle/language"
-	"github.com/bazelbuild/bazel-gazelle/repo"
+	"github.com/bazelbuild/bazel-gazelle/label"
 	"github.com/bazelbuild/bazel-gazelle/resolve"
 	"github.com/bazelbuild/bazel-gazelle/rule"
+	"github.com/bazelbuild/bazel-gazelle/repo"
 	"github.com/bazelbuild/rules_go/go/tools/bazel"
 	"github.com/goniz/gazelle-foreign-cc/common"
 )
@@ -422,7 +423,12 @@ func (l *cmakeLang) generateRulesFromTargetsWithRepoAndAPI(args language.Generat
 		// `.cmake-build/foo.h`).  This ensures include paths reported by
 		// CMake match the Bazel output location.
 		outputPath := configFile.OutputFile
-		if !strings.HasPrefix(outputPath, ".cmake-build/") {
+		// Heuristic: if the configure_file output is a root-level config.h, do not
+		// force it under .cmake-build so that relative includes like "../config.h"
+		// (seen in librdkafka) resolve.
+		if filepath.Base(outputPath) == "config.h" {
+			outputPath = "config.h"
+		} else if !strings.HasPrefix(outputPath, ".cmake-build/") {
 			outputPath = ".cmake-build/" + filepath.Base(configFile.OutputFile)
 		}
 		r.SetAttr("out", outputPath)
@@ -625,18 +631,48 @@ func (l *cmakeLang) generateRulesFromTargetsWithRepoAndAPI(args language.Generat
 			continue
 		}
 
+		// First scan for .c files that are included by other .c files so we can treat
+		// them as headers (e.g. lz4.c included by lz4hc.c). Collect into a set.
+		includedCFiles := make(map[string]bool)
+		includeCRe := regexp.MustCompile(`#include\s+"([^"]+\.c)"`)
+
+		for _, s := range cmTarget.Sources {
+			if !strings.HasSuffix(s, ".c") {
+				continue
+			}
+
+			srcPath := filepath.Join(args.Dir, s)
+			if data, err := os.ReadFile(srcPath); err == nil {
+				matches := includeCRe.FindAllStringSubmatch(string(data), -1)
+				for _, m := range matches {
+					if len(m) > 1 {
+						inc := m[1]
+						// Resolve relative to source file directory.
+						incFull := filepath.Join(filepath.Dir(s), inc)
+						includedCFiles[incFull] = true
+					}
+				}
+			}
+		}
+
 		// Filter sources/headers and generate appropriate labels
 		var finalSrcs, finalHdrs []string
 		for _, s := range cmTarget.Sources {
-			if l.fileExistsInDir(s, args.Dir) {
+			// If this .c file is intended to be included by another .c source,
+			// treat it as a header, not a compilation unit.
+			if includedCFiles[s] {
 				if externalRepo != "" {
-					// For external repositories, generate labels that reference the external repo
-					finalSrcs = append(finalSrcs, "@"+externalRepo+"//:"+s)
+					finalHdrs = append(finalHdrs, "@"+externalRepo+"//:"+s)
 				} else {
-					finalSrcs = append(finalSrcs, s)
+					finalHdrs = append(finalHdrs, s)
 				}
+				continue
+			}
+
+			if externalRepo != "" {
+				finalSrcs = append(finalSrcs, "@"+externalRepo+"//:"+s)
 			} else {
-				log.Printf("Source file %s for target %s not found in current directory, skipping.", s, cmTarget.Name)
+				finalSrcs = append(finalSrcs, s)
 			}
 		}
 
