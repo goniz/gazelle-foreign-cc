@@ -1,11 +1,24 @@
 """CMake configure_file rule for Bazel that runs cmake configure and copies generated files."""
 
-def _create_compilation_context(ctx, output_file):
-    """Create a compilation context for the generated header file."""
+def _create_compilation_context(output_file, dummy_include_dir):
+    """
+    Create a compilation context for the generated header file.
+
+    A dummy include directory named ``${output_file}.dummydir`` is created
+    right next to the generated ``config.h`` and added to the compiler
+    include path.  When a C/C++ source file uses ``#include "../config.h"``
+    the pre-processor first looks inside this dummy directory, then resolves
+    the ``..`` component which leads it to the sibling directory containing
+    the real ``config.h``.  This trick allows external projects that rely on
+    this relative include pattern to compile without modification.
+    """
 
     # Create a virtual header that makes the config.h accessible via relative paths
     # For external repositories that use "../config.h", we need to make our generated
-    # config.h findable via that path. We do this by adding appropriate include directories.
+    # config.h findable via that path.  We achieve this by adding two include directories:
+    #   1. The directory that actually contains the generated config.h
+    #   2. The dummy directory (<config.h>.dummydir) described above.
+    # Together they let "../config.h" resolve correctly during compilation.
 
     # Add the directory containing the output file
     genfiles_include = output_file.dirname
@@ -15,8 +28,8 @@ def _create_compilation_context(ctx, output_file):
     quote_includes = [genfiles_include]
 
     compilation_context = cc_common.create_compilation_context(
-        headers = depset([output_file]),
-        includes = depset([genfiles_include]),
+        headers = depset([output_file, dummy_include_dir]),
+        includes = depset([genfiles_include, dummy_include_dir.path]),
         quote_includes = depset(quote_includes),
     )
 
@@ -84,10 +97,14 @@ def _cmake_configure_file_impl(ctx):
         # Default to the output file short path if not specified
         generated_file_path = output_file.short_path
 
+    # Create a dummy directory that will serve as the starting point for
+    # the "../config.h" relative include heuristic (see _create_compilation_context).
+    dummy_include_dir = ctx.actions.declare_directory(output_file.basename + ".dummydir", sibling = output_file)
+
     # Use a simple shell command to copy the file
     ctx.actions.run_shell(
         inputs = [build_dir],
-        outputs = [output_file],
+        outputs = [output_file, dummy_include_dir],
         command = """
         if [ ! -f "{build_dir}/{generated_path}" ]; then
             echo "Generated file not found: {build_dir}/{generated_path}"
@@ -96,10 +113,12 @@ def _cmake_configure_file_impl(ctx):
             exit 1
         fi
         cp "{build_dir}/{generated_path}" "{output_file}"
+        mkdir -v -p "{dummy_include_dir}"
         """.format(
             build_dir = build_dir.path,
             generated_path = generated_file_path,
             output_file = output_file.path,
+            dummy_include_dir = dummy_include_dir.path,
         ),
         mnemonic = "CMakeCopyFile",
         progress_message = "Copying cmake generated file",
@@ -107,10 +126,10 @@ def _cmake_configure_file_impl(ctx):
     )
 
     # Create compilation context for cc targets that depend on this
-    compilation_context = _create_compilation_context(ctx, output_file)
+    compilation_context = _create_compilation_context(output_file, dummy_include_dir)
 
     return [
-        DefaultInfo(files = depset([output_file])),
+        DefaultInfo(files = depset([output_file, dummy_include_dir])),
         CcInfo(compilation_context = compilation_context),
     ]
 

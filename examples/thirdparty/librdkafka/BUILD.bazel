@@ -23,7 +23,10 @@ cmake_include_directories(
 cmake_include_directories(
     name = "librdkafka_includes_2",
     srcs = "@librdkafka//:srcs",
-    includes = ["src"],
+    includes = [
+        "src",
+        "src-cpp",
+    ],
 )
 
 cc_library(
@@ -102,7 +105,7 @@ cc_library(
     ],
     deps = [
         ":config_h",
-        ":librdkafka_includes_2",
+        ":librdkafka_includes_3",
     ],
 )
 
@@ -124,7 +127,7 @@ cc_library(
     ],
     deps = [
         ":config_h",
-        ":librdkafka_includes_3",
+        ":librdkafka_includes_2",
         ":rdkafka",
     ],
 )
@@ -153,8 +156,5 @@ cmake_configure_file(
 cmake_include_directories(
     name = "librdkafka_includes_3",
     srcs = "@librdkafka//:srcs",
-    includes = [
-        "src",
-        "src-cpp",
-    ],
+    includes = ["src"],
 )
