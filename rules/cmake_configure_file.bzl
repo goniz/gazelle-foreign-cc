@@ -106,11 +106,55 @@ def _cmake_configure_file_impl(ctx):
         use_default_shell_env = True,
     )
 
-    # Create compilation context for cc targets that depend on this
-    compilation_context = _create_compilation_context(ctx, output_file)
+    # ---------------------------------------------------------------------
+    # Extra convenience copy for headers included with "../config.h"
+    # ---------------------------------------------------------------------
+    # Several upstream libraries (e.g. tinycthread from librdkafka) place a
+    # generated   config.h   at project-root level, then include it from
+    # sources that live in a sub-directory via   #include "../config.h".
+    #
+    # Our default output path for external projects is
+    #   .cmake-build/generated/config.h
+    # When a file in   src/   includes "../config.h", the compiler will
+    # rebuild the path against each -I directory.  If one of the include
+    # dirs is   .cmake-build/generated   the search becomes
+    #   .cmake-build/generated/../config.h  →  .cmake-build/config.h.
+    #
+    # To satisfy that lookup we create a *second* output file one directory
+    # up ( .cmake-build/config.h ) that is a simple copy of the real file.
+    #
+    # This keeps the rule hermetic (both files are declared outputs) while
+    # avoiding intrusive source edits or additional include paths.
+
+    root_copy_out = None
+    if output_file.basename == "config.h" and "/" in output_file.short_path:
+        parent_dir = output_file.dirname.rpartition("/")[0]
+        if parent_dir:
+            root_copy_out = ctx.actions.declare_file(parent_dir + "/config.h")
+
+            ctx.actions.run_shell(
+                inputs = [output_file],
+                outputs = [root_copy_out],
+                command = "cp {} {}".format(output_file.path, root_copy_out.path),
+                mnemonic = "CopyConfigHRoot",
+                progress_message = "Creating root-level config.h copy",
+            )
+
+    # Extend compilation context to include the parent directory as well.
+    compilation_headers = [output_file]
+    include_dirs = [output_file.dirname]
+    if root_copy_out:
+        compilation_headers.append(root_copy_out)
+        include_dirs.append(root_copy_out.dirname)
+
+    compilation_context = cc_common.create_compilation_context(
+        headers = depset(compilation_headers),
+        includes = depset(include_dirs),
+        quote_includes = depset(include_dirs),
+    )
 
     return [
-        DefaultInfo(files = depset([output_file])),
+        DefaultInfo(files = depset(compilation_headers)),
         CcInfo(compilation_context = compilation_context),
     ]
 
