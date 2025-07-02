@@ -43,7 +43,7 @@ int main(int argc, char* argv[]) {
 
     if (argc != 3) {
         std::cerr << "Usage: " << argv[0] << " <URL> <output_filename>" << std::endl;
-        std::cerr << "Example: " << argv[0] << " https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf dummy.pdf" << std::endl;
+        std::cerr << "Example: " << argv[0] << " http://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf dummy.pdf" << std::endl;
         return 1;
     }
 

@@ -22,7 +22,7 @@ int main(int argc, char* argv[]) {
         std::string response;
         
         // Set the URL to fetch
-        const char* url = "https://httpbin.org/get";
+        const char* url = "http://httpbin.org/get";
         if (argc > 1) {
             url = argv[1];
         }

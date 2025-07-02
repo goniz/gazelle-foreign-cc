@@ -7,7 +7,8 @@ load("@rules_cc//cc:defs.bzl", "cc_library")
 # gazelle:cmake_define BUILD_TESTING OFF
 # gazelle:cmake_define CURL_DISABLE_LDAP ON
 # gazelle:cmake_define CURL_DISABLE_LDAPS ON
-# gazelle:cmake_define CMAKE_USE_OPENSSL ON
+# gazelle:cmake_define CURL_DISABLE_SSL ON
+# gazelle:cmake_define CURL_DISABLE_CRYPTO_AUTH ON
 
 package(default_visibility = ["//visibility:public"])
 
@@ -81,7 +82,6 @@ cc_library(
         "@curl//:lib/getenv.c",
         "@curl//:lib/getinfo.c",
         "@curl//:lib/gopher.c",
-        "@curl//:lib/h2h3.c",
         "@curl//:lib/hash.c",
         "@curl//:lib/headers.c",
         "@curl//:lib/hmac.c",
@@ -99,7 +99,7 @@ cc_library(
         "@curl//:lib/http_negotiate.c",
         "@curl//:lib/http_ntlm.c",
         "@curl//:lib/http_proxy.c",
-        "@curl//:lib/idn.c",
+
         "@curl//:lib/if2ip.c",
         "@curl//:lib/imap.c",
         "@curl//:lib/inet_ntop.c",
@@ -125,7 +125,6 @@ cc_library(
         "@curl//:lib/psl.c",
         "@curl//:lib/rand.c",
         "@curl//:lib/rename.c",
-        "@curl//:lib/request.c",
         "@curl//:lib/rtsp.c",
         "@curl//:lib/select.c",
         "@curl//:lib/sendf.c",
@@ -184,9 +183,6 @@ cc_library(
         "@curl//:lib/asyn.h",
         "@curl//:lib/bufref.h",
         "@curl//:lib/c-hyper.h",
-        "@curl//:lib/cf-http.h",
-        "@curl//:lib/cf-socket.h",
-        "@curl//:lib/cfilters.h",
         "@curl//:lib/config-amigaos.h",
         "@curl//:lib/config-dos.h",
         "@curl//:lib/config-mac.h",
@@ -232,7 +228,6 @@ cc_library(
         "@curl//:lib/dict.h",
         "@curl//:lib/doh.h",
         "@curl//:lib/dynbuf.h",
-        "@curl//:lib/dynhds.h",
         "@curl//:lib/easy_lock.h",
         "@curl//:lib/easyif.h",
         "@curl//:lib/easyoptions.h",
@@ -246,7 +241,6 @@ cc_library(
         "@curl//:lib/functypes.h",
         "@curl//:lib/getinfo.h",
         "@curl//:lib/gopher.h",
-        "@curl//:lib/h2h3.h",
         "@curl//:lib/hash.h",
         "@curl//:lib/headers.h",
         "@curl//:lib/hostip.h",
@@ -259,7 +253,7 @@ cc_library(
         "@curl//:lib/http_negotiate.h",
         "@curl//:lib/http_ntlm.h",
         "@curl//:lib/http_proxy.h",
-        "@curl//:lib/idn.h",
+
         "@curl//:lib/if2ip.h",
         "@curl//:lib/imap.h",
         "@curl//:lib/inet_ntop.h",
@@ -278,10 +272,8 @@ cc_library(
         "@curl//:lib/pop3.h",
         "@curl//:lib/progress.h",
         "@curl//:lib/psl.h",
-        "@curl//:lib/quic.h",
         "@curl//:lib/rand.h",
         "@curl//:lib/rename.h",
-        "@curl//:lib/request.h",
         "@curl//:lib/rtsp.h",
         "@curl//:lib/select.h",
         "@curl//:lib/sendf.h",
@@ -326,7 +318,6 @@ cc_library(
             "@curl//:lib/vtls/keylog.h",
             "@curl//:lib/vtls/mbedtls.h",
             "@curl//:lib/vtls/mbedtls_threadlock.h",
-            "@curl//:lib/vtls/nssg.h",
             "@curl//:lib/vtls/openssl.h",
             "@curl//:lib/vtls/rustls.h",
             "@curl//:lib/vtls/schannel.h",
@@ -342,8 +333,6 @@ cc_library(
     defines = ["CURL_STATICLIB"],
     linkopts = select({
         "@bazel_tools//src/conditions:linux": [
-            "-lssl",
-            "-lcrypto",
             "-lz",
         ],
         "//conditions:default": [],
@@ -363,9 +352,103 @@ cmake_configure_file(
     defines = {
         "BUILD_CURL_EXE": "OFF",
         "BUILD_TESTING": "OFF",
+        "CURL_DISABLE_CRYPTO_AUTH": "ON",
+        "CURL_DISABLE_LDAP": "ON",
+        "CURL_DISABLE_LDAPS": "ON",
+        "CURL_DISABLE_SSL": "ON",
+    },
+    generated_file_path = "curl_config.h",
+)
+
+cmake_configure_file(
+    name = "${PROJECT_BINARY_DIR}_curl-config",
+    out = "${PROJECT_BINARY_DIR}/curl-config",
+    cmake_binary = "//:cmake",
+    cmake_source_dir = ".",
+    cmake_source_files = [
+        "CMakeLists.txt",
+        "${PROJECT_SOURCE_DIR}/curl-config.in",
+    ],
+    defines = {
+        "BUILD_CURL_EXE": "OFF",
+        "BUILD_TESTING": "OFF",
         "CMAKE_USE_OPENSSL": "ON",
         "CURL_DISABLE_LDAP": "ON",
         "CURL_DISABLE_LDAPS": "ON",
     },
-    generated_file_path = "curl_config.h",
+)
+
+cmake_configure_file(
+    name = "${PROJECT_BINARY_DIR}_libcurl_pc",
+    out = "${PROJECT_BINARY_DIR}/libcurl.pc",
+    cmake_binary = "//:cmake",
+    cmake_source_dir = ".",
+    cmake_source_files = [
+        "CMakeLists.txt",
+        "${PROJECT_SOURCE_DIR}/libcurl.pc.in",
+    ],
+    defines = {
+        "BUILD_CURL_EXE": "OFF",
+        "BUILD_TESTING": "OFF",
+        "CMAKE_USE_OPENSSL": "ON",
+        "CURL_DISABLE_LDAP": "ON",
+        "CURL_DISABLE_LDAPS": "ON",
+    },
+)
+
+cmake_configure_file(
+    name = "${CMAKE_CURRENT_BINARY_DIR}_CMake_cmake_uninstall_cmake",
+    out = "${CMAKE_CURRENT_BINARY_DIR}/CMake/cmake_uninstall.cmake",
+    cmake_binary = "//:cmake",
+    cmake_source_dir = ".",
+    cmake_source_files = [
+        "CMakeLists.txt",
+        "${CMAKE_CURRENT_SOURCE_DIR}/CMake/cmake_uninstall.cmake.in",
+    ],
+    defines = {
+        "BUILD_CURL_EXE": "OFF",
+        "BUILD_TESTING": "OFF",
+        "CURL_DISABLE_CRYPTO_AUTH": "ON",
+        "CURL_DISABLE_LDAP": "ON",
+        "CURL_DISABLE_LDAPS": "ON",
+        "CURL_DISABLE_SSL": "ON",
+    },
+)
+
+cmake_configure_file(
+    name = "${CURL_BINARY_DIR}_curl-config",
+    out = "${CURL_BINARY_DIR}/curl-config",
+    cmake_binary = "//:cmake",
+    cmake_source_dir = ".",
+    cmake_source_files = [
+        "CMakeLists.txt",
+        "${CURL_SOURCE_DIR}/curl-config.in",
+    ],
+    defines = {
+        "BUILD_CURL_EXE": "OFF",
+        "BUILD_TESTING": "OFF",
+        "CURL_DISABLE_CRYPTO_AUTH": "ON",
+        "CURL_DISABLE_LDAP": "ON",
+        "CURL_DISABLE_LDAPS": "ON",
+        "CURL_DISABLE_SSL": "ON",
+    },
+)
+
+cmake_configure_file(
+    name = "${CURL_BINARY_DIR}_libcurl_pc",
+    out = "${CURL_BINARY_DIR}/libcurl.pc",
+    cmake_binary = "//:cmake",
+    cmake_source_dir = ".",
+    cmake_source_files = [
+        "CMakeLists.txt",
+        "${CURL_SOURCE_DIR}/libcurl.pc.in",
+    ],
+    defines = {
+        "BUILD_CURL_EXE": "OFF",
+        "BUILD_TESTING": "OFF",
+        "CURL_DISABLE_CRYPTO_AUTH": "ON",
+        "CURL_DISABLE_LDAP": "ON",
+        "CURL_DISABLE_LDAPS": "ON",
+        "CURL_DISABLE_SSL": "ON",
+    },
 )
