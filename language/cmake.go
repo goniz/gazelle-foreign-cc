@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/bazelbuild/bazel-gazelle/config"
@@ -625,18 +626,48 @@ func (l *cmakeLang) generateRulesFromTargetsWithRepoAndAPI(args language.Generat
 			continue
 		}
 
+		// First scan for .c files that are included by other .c files so we can treat
+		// them as headers (e.g. lz4.c included by lz4hc.c). Collect into a set.
+		includedCFiles := make(map[string]bool)
+		includeCRe := regexp.MustCompile(`#include\s+"([^"]+\.c)"`)
+
+		for _, s := range cmTarget.Sources {
+			if !strings.HasSuffix(s, ".c") {
+				continue
+			}
+
+			srcPath := filepath.Join(args.Dir, s)
+			if data, err := os.ReadFile(srcPath); err == nil {
+				matches := includeCRe.FindAllStringSubmatch(string(data), -1)
+				for _, m := range matches {
+					if len(m) > 1 {
+						inc := m[1]
+						// Resolve relative to source file directory.
+						incFull := filepath.Join(filepath.Dir(s), inc)
+						includedCFiles[incFull] = true
+					}
+				}
+			}
+		}
+
 		// Filter sources/headers and generate appropriate labels
 		var finalSrcs, finalHdrs []string
 		for _, s := range cmTarget.Sources {
-			if l.fileExistsInDir(s, args.Dir) {
+			// If this .c file is intended to be included by another .c source,
+			// treat it as a header, not a compilation unit.
+			if includedCFiles[s] {
 				if externalRepo != "" {
-					// For external repositories, generate labels that reference the external repo
-					finalSrcs = append(finalSrcs, "@"+externalRepo+"//:"+s)
+					finalHdrs = append(finalHdrs, "@"+externalRepo+"//:"+s)
 				} else {
-					finalSrcs = append(finalSrcs, s)
+					finalHdrs = append(finalHdrs, s)
 				}
+				continue
+			}
+
+			if externalRepo != "" {
+				finalSrcs = append(finalSrcs, "@"+externalRepo+"//:"+s)
 			} else {
-				log.Printf("Source file %s for target %s not found in current directory, skipping.", s, cmTarget.Name)
+				finalSrcs = append(finalSrcs, s)
 			}
 		}
 
@@ -657,6 +688,9 @@ func (l *cmakeLang) generateRulesFromTargetsWithRepoAndAPI(args language.Generat
 				// Reference the generated file via its target label as a dependency
 				generatedDeps = append(generatedDeps, targetName)
 				log.Printf("Target %s includes generated header %s via target %s", cmTarget.Name, h, targetName)
+				// Also expose the generated header itself via hdrs so that the
+				// compiler can see it directly during inclusion.
+				finalHdrs = append(finalHdrs, targetName)
 			} else if l.fileExistsInDir(h, args.Dir) {
 				if externalRepo != "" {
 					// For external repositories, generate labels that reference the external repo
