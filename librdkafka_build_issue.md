@@ -106,3 +106,33 @@ The librdkafka source should properly handle the case where `WITH_SASL_OAUTHBEAR
 The original command provided had two typos:
 1. `thirdpart` should be `thirdparty`
 2. `librdkafk` should be `librdkafka`
+
+## Resolution
+
+The issue was successfully resolved by implementing **Option 2: Disable SASL OAuth Bearer**.
+
+### Steps Taken:
+
+1. **First attempt**: Disabled SASL OAuth Bearer by changing `WITH_SASL_OAUTHBEARER ON` to `WITH_SASL_OAUTHBEARER OFF` in `examples/thirdparty/librdkafka/BUILD.bazel`.
+
+2. **Second issue discovered**: The build then failed on `rdkafka_sasl_scram.c` with a similar error because SASL SCRAM also requires OpenSSL.
+
+3. **Final fix**: Disabled both SASL OAuth Bearer and SASL SCRAM:
+   ```starlark
+   # gazelle:cmake_define WITH_SASL_SCRAM OFF
+   # gazelle:cmake_define WITH_SASL_OAUTHBEARER OFF
+   ```
+
+4. **Regenerated build files**: Ran `bazel run :gazelle` to update the build configuration.
+
+5. **Successful build**: The build completed successfully, generating:
+   - `librdkafka.a` - static library for C API
+   - `librdkafka.so` - shared library for C API
+   - `librdkafka++.a` - static library for C++ API
+   - `librdkafka++.so` - shared library for C++ API
+
+### Key Findings:
+
+- Both SASL OAuth Bearer and SASL SCRAM authentication mechanisms in librdkafka have a hard dependency on OpenSSL.
+- If SSL support is disabled (`WITH_SSL OFF`), both `WITH_SASL_OAUTHBEARER` and `WITH_SASL_SCRAM` must also be disabled.
+- The gazelle-foreign-cc tool correctly regenerates the build files when these configuration directives are changed, removing the problematic source files from the compilation.

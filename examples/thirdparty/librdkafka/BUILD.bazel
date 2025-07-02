@@ -8,8 +8,8 @@ load("@rules_cc//cc:defs.bzl", "cc_library")
 # gazelle:cmake_define RDKAFKA_BUILD_EXAMPLES OFF
 # gazelle:cmake_define WITH_ZSTD OFF
 # gazelle:cmake_define WITH_SSL OFF
-# gazelle:cmake_define WITH_SASL_SCRAM ON
-# gazelle:cmake_define WITH_SASL_OAUTHBEARER ON
+# gazelle:cmake_define WITH_SASL_SCRAM OFF
+# gazelle:cmake_define WITH_SASL_OAUTHBEARER OFF
 # gazelle:cmake_define WITH_SASL OFF
 # gazelle:cmake_define ENABLE_LZ4_EXT OFF
 # gazelle:cmake_define WITH_LIBDL OFF
@@ -75,9 +75,7 @@ cc_library(
         "@librdkafka//:src/rdkafka_request.c",
         "@librdkafka//:src/rdkafka_roundrobin_assignor.c",
         "@librdkafka//:src/rdkafka_sasl.c",
-        "@librdkafka//:src/rdkafka_sasl_oauthbearer.c",
         "@librdkafka//:src/rdkafka_sasl_plain.c",
-        "@librdkafka//:src/rdkafka_sasl_scram.c",
         "@librdkafka//:src/rdkafka_sticky_assignor.c",
         "@librdkafka//:src/rdkafka_subscription.c",
         "@librdkafka//:src/rdkafka_timer.c",
@@ -146,8 +144,8 @@ cmake_configure_file(
         "RDKAFKA_BUILD_TESTS": "OFF",
         "WITH_LIBDL": "OFF",
         "WITH_SASL": "OFF",
-        "WITH_SASL_OAUTHBEARER": "ON",
-        "WITH_SASL_SCRAM": "ON",
+        "WITH_SASL_OAUTHBEARER": "OFF",
+        "WITH_SASL_SCRAM": "OFF",
         "WITH_SSL": "OFF",
         "WITH_ZSTD": "OFF",
     },
