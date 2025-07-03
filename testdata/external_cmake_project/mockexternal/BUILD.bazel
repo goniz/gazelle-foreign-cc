@@ -1,0 +1,23 @@
+load("@gazelle-foreign-cc//rules:cmake_include_directories.bzl", "cmake_include_directories")
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
+
+cmake_include_directories(
+    name = "mockexternal_includes",
+    srcs = "glob([\"**/*\"])",
+    includes = ["include"],
+)
+
+cc_binary(
+    name = "external_app",
+    srcs = ["src/main.cpp"],
+    deps = [
+        ":external_lib",
+        ":mockexternal_includes",
+    ],
+)
+
+cc_library(
+    name = "external_lib",
+    srcs = ["src/external_lib.cpp"],
+    deps = [":mockexternal_includes"],
+)

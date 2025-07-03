@@ -1,0 +1,43 @@
+load("@gazelle-foreign-cc//rules:cmake_configure_file.bzl", "cmake_configure_file")
+load("@gazelle-foreign-cc//rules:cmake_include_directories.bzl", "cmake_include_directories")
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
+
+cmake_configure_file(
+    name = "config_h",
+    out = ".cmake-build/config.h",
+    cmake_binary = "//:cmake",
+    cmake_source_dir = ".",
+    cmake_source_files = [
+        "CMakeLists.txt",
+        "config.h.in",
+    ],
+    defines = {
+    },
+    generated_file_path = "config.h",
+)
+
+cmake_include_directories(
+    name = "configure_file_example_includes",
+    srcs = "glob([\"**/*\"])",
+    includes = [".cmake-build"],
+)
+
+cc_binary(
+    name = "app",
+    srcs = ["src/main.cpp"],
+    deps = [
+        ":config_h",
+        ":configure_file_example_includes",
+        ":mylib",
+    ],
+)
+
+cc_library(
+    name = "mylib",
+    srcs = ["src/lib.cpp"],
+    hdrs = [":config_h"],
+    deps = [
+        ":config_h",
+        ":configure_file_example_includes",
+    ],
+)
