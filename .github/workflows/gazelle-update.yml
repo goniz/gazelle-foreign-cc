@@ -71,4 +71,4 @@ jobs:
             Please review the changes and merge if they look correct.
           branch: gazelle-update-build-files
           delete-branch: true
-          base: main
+          base: ${{ github.ref_name }}

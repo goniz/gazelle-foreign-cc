@@ -1,1 +1,8 @@
 exports_files(["external_repo_buildfile.BUILD"])
+
+# CMake binary for use in cmake_configure_file rules
+sh_binary(
+    name = "cmake",
+    srcs = ["cmake_wrapper.sh"],
+    visibility = ["//visibility:public"],
+)

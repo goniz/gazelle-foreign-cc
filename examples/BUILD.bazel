@@ -16,6 +16,7 @@ sh_binary(
 gazelle(
     name = "gazelle",
     data = [
+        "@curl//:srcs",
         "@librdkafka//:srcs",
         "@libzmq//:srcs",
     ],

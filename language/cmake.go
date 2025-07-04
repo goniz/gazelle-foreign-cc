@@ -151,7 +151,7 @@ func (l *cmakeLang) GenerateRules(args language.GenerateArgs) language.GenerateR
 	// Check for cmake_source directive and collect cmake_define directives from the current BUILD file
 	var cmakeSource string
 	packageDefines := make(map[string]string)
-	
+
 	if args.File != nil {
 		for _, directive := range args.File.Directives {
 			if directive.Key == "cmake_source" {
@@ -465,10 +465,23 @@ func (l *cmakeLang) generateRulesFromTargetsWithRepoAndAPI(args language.Generat
 			generatedFileMap["@"+externalRepo+"//:"+outputPath] = ":" + configFile.Name
 			// Also map the base filename pattern that CMake might report
 			generatedFileMap["@"+externalRepo+"//:"+filepath.Base(configFile.OutputFile)] = ":" + configFile.Name
+			// Map the original output file path as CMake File API might report it
+			generatedFileMap["@"+externalRepo+"//:"+configFile.OutputFile] = ":" + configFile.Name
+			// Map common CMake build directory patterns
+			if strings.HasPrefix(configFile.OutputFile, ".cmake-build/") {
+				// Map without the .cmake-build prefix
+				relativeOutput := strings.TrimPrefix(configFile.OutputFile, ".cmake-build/")
+				generatedFileMap["@"+externalRepo+"//:.cmake-build/"+relativeOutput] = ":" + configFile.Name
+			}
+			// Map additional patterns that CMake File API might report
+			generatedFileMap["@"+externalRepo+"//:.cmake-build/lib/"+filepath.Base(configFile.OutputFile)] = ":" + configFile.Name
+			generatedFileMap["@"+externalRepo+"//:.cmake-build/include/"+filepath.Base(configFile.OutputFile)] = ":" + configFile.Name
 		} else {
 			generatedFileMap[outputPath] = ":" + configFile.Name
 			// Also map the base filename pattern that CMake might report
 			generatedFileMap[filepath.Base(configFile.OutputFile)] = ":" + configFile.Name
+			// Map the original output file path as CMake File API might report it
+			generatedFileMap[configFile.OutputFile] = ":" + configFile.Name
 		}
 
 		log.Printf("Generated cmake_configure_file %s in %s: %s -> %s with defines: %v",
@@ -486,21 +499,21 @@ func (l *cmakeLang) generateRulesFromTargetsWithRepoAndAPI(args language.Generat
 		includes []string
 		targets  []string // targets that use this include set
 	}
-	
+
 	includeSetMap := make(map[string]*includeSet) // key is stringified include set
-	includeTargetMap := make(map[string]string)    // maps target name to include target name
-	
+	includeTargetMap := make(map[string]string)   // maps target name to include target name
+
 	// Helper function to normalize includes for consistent comparison
 	normalizeIncludes := func(dirs []string, hasGeneratedDeps bool, isExternal bool) []string {
 		var normalized []string
-		
-		// For external repositories, don't add .cmake-build to includes since 
+
+		// For external repositories, don't add .cmake-build to includes since
 		// cmake_configure_file rules provide the correct include path through CcInfo
 		// For local repositories, add .cmake-build directory to includes if there are generated deps
 		if hasGeneratedDeps && !isExternal {
 			normalized = append(normalized, ".cmake-build")
 		}
-		
+
 		if len(dirs) > 0 {
 			if isExternal {
 				// For external repositories, add repository-prefixed paths
@@ -521,10 +534,10 @@ func (l *cmakeLang) generateRulesFromTargetsWithRepoAndAPI(args language.Generat
 				}
 			}
 		}
-		
+
 		return normalized
 	}
-	
+
 	// Collect unique include sets by examining each target
 	for _, cmTarget := range cmakeTargets {
 		// Check if this target has generated dependencies
@@ -541,13 +554,13 @@ func (l *cmakeLang) generateRulesFromTargetsWithRepoAndAPI(args language.Generat
 				break
 			}
 		}
-		
+
 		normalizedIncludes := normalizeIncludes(cmTarget.IncludeDirectories, hasGeneratedDeps, externalRepo != "")
-		
+
 		// Only create include targets if there are actual includes
 		if len(normalizedIncludes) > 0 {
 			includeKey := strings.Join(normalizedIncludes, ",")
-			
+
 			if set, exists := includeSetMap[includeKey]; exists {
 				// Add this target to the existing include set
 				set.targets = append(set.targets, cmTarget.Name)
@@ -560,7 +573,7 @@ func (l *cmakeLang) generateRulesFromTargetsWithRepoAndAPI(args language.Generat
 			}
 		}
 	}
-	
+
 	// Generate cmake_include_directories targets
 	for i, set := range includeSetMap {
 		var includeName string
@@ -586,9 +599,9 @@ func (l *cmakeLang) generateRulesFromTargetsWithRepoAndAPI(args language.Generat
 				includeName = fmt.Sprintf("%s_includes_%d", dirName, len(res.Gen)+1)
 			}
 		}
-		
+
 		r := rule.NewRule("cmake_include_directories", includeName)
-		
+
 		// Set srcs attribute
 		if externalRepo != "" {
 			r.SetAttr("srcs", "@"+externalRepo+"//:srcs")
@@ -597,20 +610,20 @@ func (l *cmakeLang) generateRulesFromTargetsWithRepoAndAPI(args language.Generat
 			// For now, let's use a glob pattern that matches typical source structures
 			r.SetAttr("srcs", "glob([\"**/*\"])")
 		}
-		
+
 		// Set includes attribute
 		r.SetAttr("includes", set.includes)
-		
+
 		res.Gen = append(res.Gen, r)
-		
+
 		// Map all targets in this set to this include target
 		for _, targetName := range set.targets {
 			includeTargetMap[targetName] = ":" + includeName
 		}
-		
-		log.Printf("Generated cmake_include_directories %s with includes: %v for targets: %v", 
+
+		log.Printf("Generated cmake_include_directories %s with includes: %v for targets: %v",
 			includeName, set.includes, set.targets)
-		
+
 		// Avoid unused variable error
 		_ = i
 	}
@@ -693,8 +706,12 @@ func (l *cmakeLang) generateRulesFromTargetsWithRepoAndAPI(args language.Generat
 				finalHdrs = append(finalHdrs, targetName)
 			} else if l.fileExistsInDir(h, args.Dir) {
 				if externalRepo != "" {
-					// For external repositories, generate labels that reference the external repo
-					finalHdrs = append(finalHdrs, "@"+externalRepo+"//:"+h)
+					// For external repositories, skip headers that contain .cmake-build paths
+					// as these are build artifacts that don't exist in the external repo source
+					if !strings.Contains(h, ".cmake-build") {
+						// For external repositories, generate labels that reference the external repo
+						finalHdrs = append(finalHdrs, "@"+externalRepo+"//:"+h)
+					}
 				} else {
 					finalHdrs = append(finalHdrs, h)
 				}
@@ -722,12 +739,12 @@ func (l *cmakeLang) generateRulesFromTargetsWithRepoAndAPI(args language.Generat
 		}
 		// Add cmake_configure_file targets as dependencies
 		deps = append(deps, generatedDeps...)
-		
+
 		// Add cmake_include_directories target as dependency if this target has includes
 		if includeTarget, hasIncludes := includeTargetMap[cmTarget.Name]; hasIncludes {
 			deps = append(deps, includeTarget)
 		}
-		
+
 		if len(deps) > 0 {
 			r.SetAttr("deps", deps)
 		}
@@ -845,7 +862,7 @@ func matchesConfigureFileOutput(header, configOutput string) bool {
 	configClean := strings.ReplaceAll(configOutput, "${GENERATED_DIR}/", "")
 	configClean = strings.ReplaceAll(configClean, "${CMAKE_CURRENT_BINARY_DIR}/", "")
 	configClean = strings.ReplaceAll(configClean, "${CMAKE_BINARY_DIR}/", "")
-	
+
 	// Check if header matches the cleaned path or just the basename
 	if header == configClean || header == filepath.Base(configClean) {
 		return true
@@ -873,7 +890,7 @@ func discoverConfigureFileHeaders(cmakeTargets []*common.CMakeTarget, configureF
 		configBasename := filepath.Base(configFile.OutputFile)
 		configDir := getConfigureFileOutputDirectory(configFile.OutputFile, sourceDir)
 		log.Printf("Looking for targets that include directory for configure_file output: %s (basename: %s, dir: %s)", configFile.OutputFile, configBasename, configDir)
-		
+
 		// Check each target to see if it includes the directory where the configure_file output will be generated
 		for _, target := range cmakeTargets {
 			if targetIncludesDirectory(target, configDir, sourceDir) {
@@ -891,7 +908,7 @@ func getConfigureFileOutputDirectory(outputFile, sourceDir string) string {
 	outputClean = strings.ReplaceAll(outputClean, "${GENERATED_DIR}", ".cmake-build/generated")
 	outputClean = strings.ReplaceAll(outputClean, "${CMAKE_CURRENT_BINARY_DIR}", ".cmake-build")
 	outputClean = strings.ReplaceAll(outputClean, "${CMAKE_BINARY_DIR}", ".cmake-build")
-	
+
 	// Get the directory part
 	return filepath.Dir(outputClean)
 }
@@ -904,17 +921,16 @@ func targetIncludesDirectory(target *common.CMakeTarget, targetDir, sourceDir st
 		if !filepath.IsAbs(includeDir) {
 			normalizedIncludeDir = filepath.Clean(includeDir)
 		}
-		
+
 		// Check if the target directory matches or is accessible from the include directory
-		if normalizedIncludeDir == targetDir || 
-		   targetDir == "." || 
-		   strings.HasPrefix(targetDir, normalizedIncludeDir+"/") ||
-		   strings.HasPrefix(normalizedIncludeDir, targetDir+"/") || // Include subdirectory can access parent
-		   (normalizedIncludeDir == ".cmake-build/generated/dummy" && targetDir == ".cmake-build/generated") {
+		if normalizedIncludeDir == targetDir ||
+			targetDir == "." ||
+			strings.HasPrefix(targetDir, normalizedIncludeDir+"/") ||
+			strings.HasPrefix(normalizedIncludeDir, targetDir+"/") || // Include subdirectory can access parent
+			(normalizedIncludeDir == ".cmake-build/generated/dummy" && targetDir == ".cmake-build/generated") {
 			log.Printf("Target %s include directory %s matches configure_file directory %s", target.Name, normalizedIncludeDir, targetDir)
 			return true
 		}
 	}
 	return false
 }
-

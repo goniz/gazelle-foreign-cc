@@ -1,8 +1,49 @@
 filegroup(
     name = "all",
-    srcs = glob(
-        ["**"],
-        exclude = ["**/BUILD.bazel"],
-    ),
+    srcs = [
+        ".gitkeep",
+        ":complex_cc_project_files",
+        ":configure_file_example_files",
+        ":external_cmake_project_files",
+        ":invalid_cmake_project_files",
+        ":regex_fallback_project_files",
+        ":simple_cc_project_files",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "simple_cc_project_files",
+    srcs = ["//testdata/simple_cc_project:testdata_files"],
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "complex_cc_project_files",
+    srcs = ["//testdata/complex_cc_project:testdata_files"],
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "configure_file_example_files",
+    srcs = ["//testdata/configure_file_example:testdata_files"],
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "external_cmake_project_files",
+    srcs = ["//testdata/external_cmake_project/mockexternal:testdata_files"],
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "invalid_cmake_project_files",
+    srcs = ["//testdata/invalid_cmake_project:testdata_files"],
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "regex_fallback_project_files",
+    srcs = ["//testdata/regex_fallback_project:testdata_files"],
     visibility = ["//visibility:public"],
 )
