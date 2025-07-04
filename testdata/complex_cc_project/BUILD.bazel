@@ -1,9 +1,20 @@
 load("@gazelle-foreign-cc//rules:cmake_include_directories.bzl", "cmake_include_directories")
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
 
+filegroup(
+    name = "testdata_files",
+    srcs = glob(["*"]),
+    visibility = ["//testdata:__pkg__"],
+)
+
+filegroup(
+    name = "srcs",
+    srcs = glob(["**/*"]),
+)
+
 cmake_include_directories(
     name = "complex_cc_project_includes_1",
-    srcs = "glob([\"**/*\"])",
+    srcs = ":srcs",
     includes = [
         "include",
         "third_party/include",
@@ -12,7 +23,7 @@ cmake_include_directories(
 
 cmake_include_directories(
     name = "complex_cc_project_includes_2",
-    srcs = "glob([\"**/*\"])",
+    srcs = ":srcs",
     includes = [
         "include",
         "tests",
@@ -21,12 +32,11 @@ cmake_include_directories(
 )
 
 cc_library(
-    name = "plugin_system",
-    srcs = [
-        "plugins/loader.cpp",
-        "plugins/plugin.cpp",
+    name = "plugin_system_wrapper",
+    deps = [
+        ":complex_cc_project_includes_1",
+        "//testdata/complex_cc_project/plugins:plugin_system",
     ],
-    deps = [":complex_cc_project_includes_1"],
 )
 
 cc_binary(

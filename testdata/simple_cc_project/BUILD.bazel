@@ -1,5 +1,11 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
 
+filegroup(
+    name = "testdata_files",
+    srcs = glob(["*"]),
+    visibility = ["//testdata:__pkg__"],
+)
+
 cc_binary(
     name = "app",
     srcs = ["main.cc"],

@@ -2,6 +2,20 @@ load("@gazelle-foreign-cc//rules:cmake_configure_file.bzl", "cmake_configure_fil
 load("@gazelle-foreign-cc//rules:cmake_include_directories.bzl", "cmake_include_directories")
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
 
+filegroup(
+    name = "testdata_files",
+    srcs = glob([
+        "*",
+        "src/*",
+    ]),
+    visibility = ["//testdata:__pkg__"],
+)
+
+filegroup(
+    name = "srcs",
+    srcs = glob(["**/*"]),
+)
+
 cmake_configure_file(
     name = "config_h",
     out = ".cmake-build/config.h",
@@ -18,7 +32,7 @@ cmake_configure_file(
 
 cmake_include_directories(
     name = "configure_file_example_includes",
-    srcs = "glob([\"**/*\"])",
+    srcs = ":srcs",
     includes = [".cmake-build"],
 )
 
