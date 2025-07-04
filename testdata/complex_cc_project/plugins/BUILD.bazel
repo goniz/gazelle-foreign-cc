@@ -6,4 +6,5 @@ cc_library(
         "loader.cpp",
         "plugin.cpp",
     ],
+    visibility = ["//testdata/complex_cc_project:__pkg__"],
 )

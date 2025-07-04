@@ -1,9 +1,24 @@
 load("@gazelle-foreign-cc//rules:cmake_include_directories.bzl", "cmake_include_directories")
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
 
+filegroup(
+    name = "testdata_files",
+    srcs = glob([
+        "*",
+        "src/*",
+        "include/*",
+    ]),
+    visibility = ["//testdata:__pkg__"],
+)
+
+filegroup(
+    name = "srcs",
+    srcs = glob(["**/*"]),
+)
+
 cmake_include_directories(
     name = "mockexternal_includes",
-    srcs = "glob([\"**/*\"])",
+    srcs = ":srcs",
     includes = ["include"],
 )
 
@@ -19,5 +34,7 @@ cc_binary(
 cc_library(
     name = "external_lib",
     srcs = ["src/external_lib.cpp"],
+    hdrs = ["include/external_lib.h"],
+    includes = ["include"],
     deps = [":mockexternal_includes"],
 )
