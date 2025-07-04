@@ -5,15 +5,11 @@ package(default_visibility = ["//visibility:public"])
 cc_binary(
     name = "example_http_get",
     srcs = ["example_http_get.cpp"],
-    deps = [
-        "//thirdparty/libcurl",
-    ],
+    linkopts = ["-lcurl"],
 )
 
 cc_binary(
     name = "example_download",
     srcs = ["example_download.cpp"],
-    deps = [
-        "//thirdparty/libcurl",
-    ],
+    linkopts = ["-lcurl"],
 )

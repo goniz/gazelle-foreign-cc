@@ -180,7 +180,7 @@ cc_library(
         "@curl//:lib/wildcard.c",
     ],
     hdrs = [
-        "@curl//:.cmake-build/lib/curl_config.h",
+        ":curl_config_h",
         "@curl//:lib/altsvc.h",
         "@curl//:lib/amigaos.h",
         "@curl//:lib/arpa_telnet.h",
