@@ -1,0 +1,73 @@
+load("@gazelle-foreign-cc//rules:cmake_include_directories.bzl", "cmake_include_directories")
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
+
+cmake_include_directories(
+    name = "complex_cc_project_includes_1",
+    srcs = "glob([\"**/*\"])",
+    includes = [
+        "include",
+        "third_party/include",
+    ],
+)
+
+cmake_include_directories(
+    name = "complex_cc_project_includes_2",
+    srcs = "glob([\"**/*\"])",
+    includes = [
+        "include",
+        "tests",
+        "third_party/include",
+    ],
+)
+
+cc_library(
+    name = "plugin_system",
+    srcs = [
+        "plugins/loader.cpp",
+        "plugins/plugin.cpp",
+    ],
+    deps = [":complex_cc_project_includes_1"],
+)
+
+cc_binary(
+    name = "test_runner",
+    srcs = [
+        "tests/test_main.cpp",
+        "tests/test_utils.cpp",
+    ],
+    deps = [
+        ":complex_cc_project_includes_2",
+        ":utils",
+    ],
+)
+
+cc_library(
+    name = "utils",
+    srcs = [
+        "src/helper.cpp",
+        "src/utils.cpp",
+    ],
+    deps = [":complex_cc_project_includes_1"],
+)
+
+cc_library(
+    name = "core",
+    srcs = [
+        "src/core.cpp",
+        "src/manager.cpp",
+    ],
+    deps = [
+        ":complex_cc_project_includes_1",
+        ":utils",
+    ],
+)
+
+cc_binary(
+    name = "main_app",
+    srcs = ["src/main.cpp"],
+    deps = [
+        ":complex_cc_project_includes_1",
+        ":core",
+        ":utils",
+    ],
+)
