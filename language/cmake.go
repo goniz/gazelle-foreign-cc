@@ -473,6 +473,9 @@ func (l *cmakeLang) generateRulesFromTargetsWithRepoAndAPI(args language.Generat
 				relativeOutput := strings.TrimPrefix(configFile.OutputFile, ".cmake-build/")
 				generatedFileMap["@"+externalRepo+"//:.cmake-build/"+relativeOutput] = ":" + configFile.Name
 			}
+			// Map additional patterns that CMake File API might report
+			generatedFileMap["@"+externalRepo+"//:.cmake-build/lib/"+filepath.Base(configFile.OutputFile)] = ":" + configFile.Name
+			generatedFileMap["@"+externalRepo+"//:.cmake-build/include/"+filepath.Base(configFile.OutputFile)] = ":" + configFile.Name
 		} else {
 			generatedFileMap[outputPath] = ":" + configFile.Name
 			// Also map the base filename pattern that CMake might report
@@ -703,8 +706,12 @@ func (l *cmakeLang) generateRulesFromTargetsWithRepoAndAPI(args language.Generat
 				finalHdrs = append(finalHdrs, targetName)
 			} else if l.fileExistsInDir(h, args.Dir) {
 				if externalRepo != "" {
-					// For external repositories, generate labels that reference the external repo
-					finalHdrs = append(finalHdrs, "@"+externalRepo+"//:"+h)
+					// For external repositories, skip headers that contain .cmake-build paths
+					// as these are build artifacts that don't exist in the external repo source
+					if !strings.Contains(h, ".cmake-build") {
+						// For external repositories, generate labels that reference the external repo
+						finalHdrs = append(finalHdrs, "@"+externalRepo+"//:"+h)
+					}
 				} else {
 					finalHdrs = append(finalHdrs, h)
 				}

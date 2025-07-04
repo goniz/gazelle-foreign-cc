@@ -180,7 +180,6 @@ cc_library(
         "@curl//:lib/wildcard.c",
     ],
     hdrs = [
-        ":curl_config_h",
         "@curl//:lib/altsvc.h",
         "@curl//:lib/amigaos.h",
         "@curl//:lib/arpa_telnet.h",
@@ -326,7 +325,10 @@ cc_library(
         "@curl//:lib/warnless.h",
         "@curl//:lib/wildcard.h",
     ],
-    deps = [":curl_includes"],
+    deps = [
+        ":curl_config_h",
+        ":curl_includes",
+    ],
 )
 
 cc_library(
@@ -640,7 +642,10 @@ cmake_configure_file(
     out = "curl_config.h",
     cmake_binary = "//:cmake",
     cmake_source_dir = ".",
-    cmake_source_files = ["@curl//:srcs"],
+    cmake_source_files = [
+        "@curl//:lib/curl_config.h.in",
+        "@curl//:CMakeLists.txt",
+    ],
     defines = {
         "BUILD_CURL_EXE": "OFF",
         "BUILD_TESTING": "OFF",
