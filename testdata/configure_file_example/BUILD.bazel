@@ -24,6 +24,8 @@ cmake_configure_file(
     cmake_source_files = [
         "CMakeLists.txt",
         "config.h.in",
+        "src/lib.cpp",
+        "src/main.cpp",
     ],
     defines = {
     },
