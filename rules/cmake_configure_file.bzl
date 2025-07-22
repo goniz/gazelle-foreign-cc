@@ -79,7 +79,7 @@ def _cmake_configure_file_impl(ctx):
                 else:
                     actual_source_dir = "."
                 break
-        
+
         # If no CMakeLists.txt found in inputs, but we have external repo sources,
         # try to find the source directory from any file that looks like CMakeLists.txt
         if actual_source_dir == cmake_source_dir and inputs:
