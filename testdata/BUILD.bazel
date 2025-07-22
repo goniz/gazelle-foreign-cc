@@ -6,7 +6,6 @@ filegroup(
         ":configure_file_example_files",
         ":external_cmake_project_files",
         ":invalid_cmake_project_files",
-        ":regex_fallback_project_files",
         ":simple_cc_project_files",
     ],
     visibility = ["//visibility:public"],
@@ -42,8 +41,4 @@ filegroup(
     visibility = ["//visibility:public"],
 )
 
-filegroup(
-    name = "regex_fallback_project_files",
-    srcs = ["//testdata/regex_fallback_project:testdata_files"],
-    visibility = ["//visibility:public"],
-)
+

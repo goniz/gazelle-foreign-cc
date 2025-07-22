@@ -1,11 +1,14 @@
 package gazelle
 
 import (
+	"log"
+
 	"github.com/bazelbuild/bazel-gazelle/language"
-	"github.com/goniz/gazelle-foreign-cc/common"
 )
 
-// GenerateRules delegates to the common package to avoid circular dependencies
+// GenerateRules is deprecated - regex fallback parsing has been removed
+// Always use CMake File API through the main language interface
 func GenerateRules(args language.GenerateArgs) language.GenerateResult {
-	return common.GenerateRules(args)
+	log.Printf("GenerateRules in gazelle package is deprecated. Regex fallback parsing has been removed. Use CMake File API instead.")
+	return language.GenerateResult{}
 }
