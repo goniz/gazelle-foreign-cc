@@ -64,15 +64,22 @@ def _cmake_configure_file_impl(ctx):
 
     # Get source files and derive the actual source directory
     inputs = []
-    actual_source_dir = "."
+    actual_source_dir = cmake_source_dir
     if ctx.attr.cmake_source_files:
         inputs.extend(ctx.files.cmake_source_files)
 
         # Find CMakeLists.txt in the inputs to determine the source directory
         for file in ctx.files.cmake_source_files:
             if file.basename == "CMakeLists.txt":
-                # Use the directory containing CMakeLists.txt
-                actual_source_dir = file.dirname
+                # Use the short_path (relative to execroot) of the directory containing CMakeLists.txt
+                # This ensures CMake gets a relative path it can work with
+                if file.short_path.endswith("/CMakeLists.txt"):
+                    actual_source_dir = file.short_path[:-len("/CMakeLists.txt")]
+                elif file.short_path == "CMakeLists.txt":
+                    actual_source_dir = "."
+                else:
+                    # Fallback to the directory part of short_path
+                    actual_source_dir = "/".join(file.short_path.split("/")[:-1]) or "."
                 break
 
     # Run cmake configure to generate files
