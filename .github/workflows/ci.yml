@@ -57,3 +57,21 @@ jobs:
           bazel run //:gazelle
           bazel build //thirdparty/librdkafka:all
         working-directory: examples
+
+  example-libcurl:
+    name: "Example: libcurl"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Bazel
+        uses: bazel-contrib/setup-bazel@0.14.0
+        with:
+          bazelrc: ${{ secrets.BUILDBUDDY_BAZELRC }}
+
+      - name: "Build Example: libcurl"
+        run: |
+          bazel run //:gazelle
+          bazel build //libcurl:all
+        working-directory: examples
