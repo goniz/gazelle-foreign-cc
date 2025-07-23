@@ -193,9 +193,8 @@ func (l *cmakeLang) GenerateRules(args language.GenerateArgs) language.GenerateR
 
 	cmakeTargets, err := api.GenerateFromAPI(args.Rel)
 	if err != nil {
-		log.Printf("CMake File API failed for %s: %v. Falling back to regex parsing.", args.Rel, err)
-		// Fallback to regex-based parsing using the existing function from gazelle package
-		return common.GenerateRulesWithDefines(args, packageDefines)
+		log.Printf("CMake File API failed for %s: %v. Aborting rule generation.", args.Rel, err)
+		return language.GenerateResult{}
 	}
 
 	return l.generateRulesFromTargets(args, cmakeTargets, packageDefines)
@@ -248,11 +247,8 @@ func (l *cmakeLang) generateRulesFromExternalSource(args language.GenerateArgs, 
 
 	cmakeTargets, err := api.GenerateFromAPI(args.Rel)
 	if err != nil {
-		log.Printf("CMake File API failed for external source %s: %v. Falling back to regex parsing.", sourceLabel, err)
-		// Create a modified args for the external directory
-		externalArgs := args
-		externalArgs.Dir = externalRepoPath
-		return common.GenerateRulesWithDefines(externalArgs, packageDefines)
+		log.Printf("CMake File API failed for external source %s: %v. Aborting rule generation.", sourceLabel, err)
+		return language.GenerateResult{}
 	}
 
 	log.Printf("Successfully parsed %d CMake targets from external repository %s", len(cmakeTargets), repoName)

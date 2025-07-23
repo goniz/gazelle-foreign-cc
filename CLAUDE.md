@@ -3,7 +3,7 @@
 **gazelle-foreign-cc** is a Bazel Gazelle plugin that generates C++ BUILD rules (`cc_library`, `cc_binary`, `cc_test`) from CMake projects, bridging CMake and Bazel build systems.
 
 ## Core Functionality
-- Parses CMakeLists.txt files using CMake File API (primary) or regex (fallback)
+- Parses CMakeLists.txt files using CMake File API exclusively
 - Generates Bazel `cc_*` rules automatically
 - Supports external CMake dependencies via `gazelle:cmake` directives
 
@@ -12,7 +12,7 @@
 gazelle-foreign-cc/
 ├── gazelle/               # Plugin configuration and core logic
 │   ├── config.go         # CMake directives (`gazelle:cmake_executable`, `gazelle:cmake`)
-│   ├── generate.go       # Regex-based parsing fallback
+│   ├── generate.go       # Deprecated (regex fallback removed)
 │   └── plugin.go         # Plugin registration
 ├── language/             # Gazelle language implementation
 │   ├── cmake.go          # Main language.Language interface
@@ -79,10 +79,10 @@ Configure()                      // Handle directives
 - `gazelle:cmake_define KEY VALUE` - Pass CMake definitions
 
 ## Rule Generation Strategy
-1. **CMake File API**: Modern CMake parsing (preferred)
-2. **Regex Fallback**: Pattern matching for compatibility
-3. **Bazel Labels**: Generate proper `@repo//target` references
-4. **External Support**: Handle external CMake projects
+1. **CMake File API**: Modern CMake parsing (exclusive method)
+2. **Bazel Labels**: Generate proper `@repo//target` references
+3. **External Support**: Handle external CMake projects
+4. **Error Handling**: Fail if CMake File API is unavailable
 
 ## Implementation Status
 - ✅ Basic C++ rule generation, directive handling, external repos

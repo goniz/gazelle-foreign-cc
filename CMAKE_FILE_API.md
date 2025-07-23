@@ -4,7 +4,7 @@ This document describes the CMake File API integration implemented for the Bazel
 
 ## Overview
 
-The CMake File API integration replaces regex-based parsing of CMakeLists.txt files with a more robust and accurate approach using CMake's built-in File API. This provides better dependency resolution, target information, and build configuration details.
+The CMake File API integration provides a robust and accurate approach for parsing CMakeLists.txt files using CMake's built-in File API. This is now the exclusive method for parsing CMake projects, providing better dependency resolution, target information, and build configuration details.
 
 ## Implementation
 
@@ -15,8 +15,8 @@ The CMake File API integration replaces regex-based parsing of CMakeLists.txt fi
    - API query generation and response parsing
    - Target, source, and dependency extraction
 
-2. **generate.go** - Integration with Gazelle generation
-   - Primary File API usage with fallback to regex parsing
+2. **generate.go** - Integration with Gazelle generation (deprecated)
+   - Previously provided regex fallback (now removed)
    - Enhanced target processing and rule generation
 
 3. **resolve.go** - Improved dependency resolution
@@ -29,7 +29,7 @@ The CMake File API integration replaces regex-based parsing of CMakeLists.txt fi
 - **Dependency Resolution**: Maps target dependencies and linked libraries
 - **Include Directory Handling**: Processes both global and target-specific include paths
 - **Subdirectory Support**: Handles complex projects with multiple CMakeLists.txt files
-- **Error Handling**: Graceful fallback to regex parsing when File API fails
+- **Error Handling**: Fails gracefully when File API is unavailable
 
 ## Usage
 
@@ -110,23 +110,24 @@ Successfully parsed X targets using CMake File API:
 
 When CMake configuration fails (invalid syntax, missing dependencies), the system:
 1. Logs the CMake error
-2. Falls back to regex-based parsing
-3. Continues with best-effort rule generation
+2. Aborts rule generation
+3. Returns empty result
 
 ### File API Unavailability
 
 If CMake File API is not available (older CMake versions):
 1. Automatically detects the limitation
-2. Uses regex parsing as primary method
-3. Logs the fallback for debugging
+2. Aborts rule generation
+3. Logs the error for debugging
 
-## Benefits Over Regex Parsing
+## Benefits of CMake File API
 
 1. **Accuracy**: No parsing ambiguities or edge cases
 2. **Completeness**: Access to all CMake target information
 3. **Maintainability**: No complex regex patterns to maintain
 4. **Robustness**: Handles complex CMake constructs correctly
 5. **Future-proof**: Leverages CMake's official API
+6. **Reliability**: Consistent behavior across different CMake projects
 
 ## Limitations
 
