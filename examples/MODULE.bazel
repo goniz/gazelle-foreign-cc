@@ -43,3 +43,11 @@ http_archive(
     strip_prefix = "curl-7.84.0",
     url = "https://curl.se/download/curl-7.84.0.tar.gz",
 )
+
+http_archive(
+    name = "libxml2",
+    build_file = "@gazelle-foreign-cc//:external_repo_buildfile.BUILD",
+    integrity = "sha256-dPwWMhejlkJX0745r5Q+CIYSY8QjH571tJa29tTHsrY=",
+    strip_prefix = "libxml2-2.13.5",
+    url = "https://download.gnome.org/sources/libxml2/2.13/libxml2-2.13.5.tar.xz",
+)
